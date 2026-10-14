@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Arca Load Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#E9F0EF;--card:#fff;--tx:#1C1C3F;--mu:#5d6081;--bd:#cdd7d6;--ac:#0E34FF;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1C1C3F;--card:#26265a;--tx:#EEF2F1;--mu:#a6aad4;--bd:#3d3d78;--ac:#4a67ff}}
+:root[data-theme="dark"]{--bg:#1C1C3F;--card:#26265a;--tx:#EEF2F1;--mu:#a6aad4;--bd:#3d3d78;--ac:#4a67ff}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 'Hanken Grotesk',system-ui,-apple-system,Segoe UI,sans-serif}
+.app{display:grid;grid-template-columns:410px 1fr;gap:12px;padding:12px;max-width:1450px;margin:auto}
+@media(max-width:880px){.app{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:6px;padding:14px;margin-bottom:12px}
+:focus-visible{outline:2px solid var(--ac);outline-offset:1px}.hd{display:flex;align-items:flex-end;gap:14px}h1{font-size:15px;font-weight:400;margin:0 0 3px;color:var(--mu)}h2{font-size:14px;font-weight:500;margin:14px 0 6px;color:var(--tx)}h2::before{content:"";display:inline-block;width:7px;height:7px;background:var(--ac);margin-right:8px}.logo{display:inline-block;line-height:1}.arca{font-size:40px;font-weight:300;letter-spacing:-.02em;color:var(--tx)}.mark{display:inline-block;width:10px;height:10px;margin:6px 0 0 3px;vertical-align:top;background:linear-gradient(var(--ac) 0 28%,var(--card) 28% 40%,var(--ac) 40%)}.logo small{display:block;color:var(--ac);font-size:12px;font-weight:300;margin-top:2px}
+label{font-size:11px;color:var(--mu);display:block}
+select,input[type=text],input[type=number]{background:var(--bg);color:var(--tx);border:1px solid var(--bd);border-radius:4px;padding:5px 6px;font:inherit;width:100%}
+button{background:var(--ac);color:#fff;border:0;border-radius:4px;padding:8px 12px;font:inherit;font-weight:500;cursor:pointer}
+button.g{background:transparent;color:var(--mu);border:1px solid var(--bd)}
+.tabs{display:flex;gap:6px;margin-bottom:8px}.tabs button{flex:1;background:transparent;color:var(--mu);border:1px solid var(--bd)}.tabs button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.item{border:1px solid var(--bd);border-radius:4px;padding:8px;margin-bottom:8px}
+.nm{display:grid;grid-template-columns:14px 1fr 64px 26px;gap:6px;align-items:end;margin-bottom:6px}.sw{height:28px;border-radius:4px}
+.chk{display:flex;gap:14px;margin-top:6px;font-size:12px;color:var(--mu)}.chk label{display:flex;gap:4px;align-items:center;font-size:12px}
+#view{position:relative;height:540px;border-radius:6px;border:1px solid var(--bd);background:var(--card);overflow:hidden}
+@media(max-width:880px){#view{height:360px}}
+#view canvas{display:block;width:100%;height:100%}
+.hint{position:absolute;left:10px;bottom:8px;font-size:11px;color:var(--mu)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}@media(max-width:560px){.stats{grid-template-columns:1fr 1fr}}
+.stats div{background:var(--card);border:1px solid var(--bd);border-radius:4px;padding:10px}
+.stats b{display:block;font-size:24px;font-weight:300}.stats span{font-size:12px;color:var(--mu)}
+#msg{font-size:13px}.bar2{position:sticky;top:0;z-index:5;display:flex;gap:14px;align-items:center;background:var(--bg);padding:0 0 10px}@media(max-width:880px){body{padding-bottom:72px}.bar2{position:fixed;left:0;right:0;bottom:0;top:auto;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--bd)}}#go{padding:10px 26px;font-weight:600;white-space:nowrap}.ok{color:#12926a}.bad{color:#d92d20}
+.note{font-size:11px;color:var(--mu);margin-top:6px}.fail{border:1px solid var(--bd);border-left:3px solid #d92d20;border-radius:8px;padding:8px 10px;margin-top:8px;background:var(--card);font-size:13px;line-height:1.5}.sumline{font-size:13px;color:var(--mu)}
+</style></head><body>
+<div class="app"><div>
+<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><div class="hd"><span class="logo"><span class="arca">Arca</span><i class="mark"></i><small>BioLogistics</small></span><h1>Load planner</h1></div><select id="unit" style="width:auto"><option value="mm">mm</option><option value="cm">cm</option></select></div>
+ <div class="tabs"><button id="t1" class="on">Packaging</button><button id="t2">Vehicle</button></div>
+
+ <div id="pk">
+  
+  
+  <h2>Product to pack (<span class="u">mm</span> / kg)</h2><div id="items"></div>
+  <button class="g" id="add">+ Add product</button>
+  <h2>Door placement</h2><select id="doorPk"><option value="left">Left</option><option value="top" selected>Top</option><option value="none">None</option></select>
+  <div class="note">Top = lid opens upwards, boxes fill in layers from the floor. Left = loaded through an end door, filling from the far end towards the door. None = no door shown. Arca boxes open from the top, so Top is the default here.</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2 style="margin:10px 0 6px">Packaging specs <span style="text-transform:none">(editable, saved in this browser)</span></h2><div style="display:flex;gap:6px;flex-shrink:0"><button class="g" id="rst" style="padding:3px 10px;font-size:12px">Reset</button><button class="g" id="rsta" style="padding:3px 10px;font-size:12px">Reset all</button></div></div>
+  <div id="spec"></div>
+  <div class="note">Packaging data from Arca's equipment list: outer size and inner payload size. "Use" = inner payload space. The list gives payload in litres (shown beside the name); add a kg limit here only if one applies.</div>
+ </div>
+
+ <div id="vh" hidden>
+  <div class="g4" style="grid-template-columns:repeat(5,1fr)"><div style="grid-column:span 5"><label>Vehicle</label><select id="veh"></select></div>
+  <div><label>Load L</label><input type="number" id="vl"></div><div><label>Load W</label><input type="number" id="vw"></div><div><label>Load H</label><input type="number" id="vh2"></div><div><label>Arches</label><input type="number" id="va"></div><div><label>Payload kg</label><input type="number" id="vp"></div></div>
+  <div class="note">Dimensions in <span class="u">mm</span>. Load space = bulkhead to rear doors (L), widest point (W), floor to roof (H); Arches = width between wheel arches. Figures are published UK data for these models — payloads vary by vehicle, so check each van's plate. Arch position is approximate.</div>
+  <h2>Door placement</h2><select id="doorVh"><option value="left" selected>Left</option><option value="top">Top</option><option value="none">None</option></select>
+  <div class="note">Left = rear doors (shown on the left, loaded from the far end towards the doors). Top = load from above. None = no door shown.</div>
+  <h2>Load</h2><div id="rows"></div><button class="g" id="addr">+ Add packaging</button>
+ </div>
+ 
+</div></div>
+
+<div><div class="bar2"><button id="go">Optimise load</button><div id="msg"></div></div><div id="view"><div class="hint">Drag to rotate · scroll to zoom · door shown in blue</div></div>
+ <div style="margin-top:8px;display:flex;gap:10px;align-items:center"><select id="shp" style="width:auto"></select>
+  <input type="range" id="step" min="0" max="0" value="0" style="flex:1"><span id="stepn" style="font-size:12px;color:var(--mu)"></span></div>
+ <div class="stats"><div><b id="s1">–</b><span id="l1"></span></div><div><b id="s2">–</b><span id="l2"></span></div><div><b id="s3">–</b><span id="l3"></span></div><div><b id="s4">–</b><span id="l4"></span></div></div>
+ <div id="res" style="margin-top:10px"></div><div style="margin-top:10px"><button class="g" id="tov" hidden>View in vehicle →</button></div>
+</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const DEF=[
+ ['c3','Crēdo Cube 3L',[318,267,279],[130,130,130],6,3,'cube'],['c4','Crēdo Cube 4L',[318,267,279],[150,150,150],5,4,'cube'],
+ ['c8','Crēdo Cube 8L Nested',[445,286,292],[282,165,165],8,8,'cube'],['c10','Crēdo Cube 10L',[381,343,349],[216,216,216],11,10,'cube'],
+ ['c12','Crēdo Cube 12L',[381,343,349],[226,226,226],10,12,'cube'],['c16','Crēdo Cube 16L',[419,375,381],[254,254,254],11,16,'cube'],
+ ['c28','Crēdo Cube 28L',[457,419,432],[305,305,305],16,28,'cube'],['c42','Crēdo Cube 42L',[616,419,432],[457,305,305],21,42,'cube'],
+ ['d2','Dry Ice 1.8L',[318,267,279],[109,107,144],2.5,1.8,'dry'],['d5','Dry Ice 5L',[381,343,349],[194,194,146],4.7,5,'dry'],
+ ['d17','Dry Ice 17L',[457,419,432],[267,267,241],7.4,17,'dry'],['d27','Dry Ice 27L',[540,495,502],[301,301,292],8.8,27,'dry'],
+ ['d60','Dry Ice 60L',[673,673,641],[390,390,395],26,60,'dry']];
+const DEF2=[
+ ['s5','Single Use Dry Ice 5 L',[266,266,272],[130,130,85],4.4,1.4,'dry'],
+ ['s9','Single Use Dry Ice 9 L',[350,350,350],[170,170,105],8.4,3,'dry'],
+ ['s30','Single Use Dry Ice 30 L',[392,392,400],[280,280,148],22.9,11.6,'dry'],
+ ['r17','Reusable Dry Ice 17 L',[390,370,350],[220,220,130],4.8,6.3,'dry'],
+ ['r35','Reusable Dry Ice 35 L',[490,450,430],[290,290,165],7,13.9,'dry'],
+ ['s54','Single Use Dry Ice 54 L',[571,515,441],[404,349,157],6.4,22.1,'dry'],
+ ['c12','Crēdo 12 L (AMB/RFD/FRZ)',[381,343,349],[226,226,226],10,12,'cube'],
+ ['c28','Crēdo 28 L (AMB/RFD/FRZ)',[457,419,432],[305,305,305],16,28,'cube'],
+ ['c56','Crēdo 56 L (AMB/RFD/FRZ)',[540,495,502],[381,381,381],25,56,'cube'],
+ ['c96','Crēdo 96 L',[673,673,641],[457,457,457],46,96,'cube']];
+let PACKS=DEF2.map(a=>({id:a[0],n:a[1],ext:[...a[2]],use:[...a[3]],tare:a[4],vol:a[5],sys:a[6],mx:null}));const NM={s5:'Single Use Dry Ice 5 Litre',s9:'Single Use Dry Ice 9 Litre',s30:'Single Use Dry Ice 30 Litre',r17:'Reusable Dry Ice 17 Litre',r35:'Reusable Dry Ice 35 Litre',s54:'Single Use Dry Ice 54 Litre',c12:'Credo (AMB, RFD & FRZ) 12 Litre',c28:'Credo (AMB, RFD & FRZ) 28 Litre',c56:'Credo (AMB, RFD & FRZ) 56 Litre',c96:'Credo (AMB, RFD & FRZ) 96 Litre'};PACKS.forEach(p=>p.n=NM[p.id]);const PRESET=JSON.parse(JSON.stringify(PACKS));
+try{const s=JSON.parse(localStorage.getItem('arcaPacks3')||'null');if(s)s.forEach(x=>{const p=PACKS.find(q=>q.id===x.id);if(p)Object.assign(p,x)})}catch(e){}
+const save=()=>{try{localStorage.setItem('arcaPacks3',JSON.stringify(PACKS))}catch(e){}};
+const TEMPS={'Any temperature':null,'15–25°C':'cube','2–8°C':'cube','Frozen −20°C':'cube','−80°C (dry ice)':'dry'};
+const VEH={
+'WM71 CZF · Ford Transit Custom 300 Trend (L1H1)':{L:2554,W:1775,H:1406,A:1351,P:1000,OL:4973,OW:1986,DH:588},
+'YP24 LJA · Ford Transit Connect 250 Limited (L2)':{L:2150,W:1628,H:1269,A:1230,P:750,OL:4825,OW:1835,DH:560},
+'EY67 OHW · Mercedes-Benz Citan (L1)':{L:1806,W:1524,H:1256,A:1248,P:730,OL:4498,OW:1859,DH:589}};
+let unit='cm';const dv=v=>unit==='cm'?+(v/10).toFixed(2):v,toMM=v=>unit==='cm'?v*10:v;
+const COL=['#0E34FF','#7B8FFF','#00A38C','#5E00CC','#F5A524','#E5484D','#2DB67D','#A06BFF','#00B8D9','#FF7A59','#3B4A9E','#9BB0FF','#6B7280'];
+let mode=1,cargo=[{n:'Sample box',l:140,w:100,h:50,kg:.4,q:12,up:true,st:true,b:'auto'}],rows=[],R=null;
+const pk=id=>PACKS.find(p=>p.id===id);
+
+
+Object.keys(VEH).forEach(k=>$('veh').add(new Option(k,k)));
+const pn=p=>p.n,GRP=[['Credo','Credo'],['Single use dry ice','Single'],['Reusable dry ice','Reusable']],boxOpts=s=>`<option value="auto" ${!s||s==='auto'?'selected':''}>Auto – smallest that fits</option>`+GRP.map(([t,k])=>`<optgroup label="${t}">${PACKS.filter(p=>p.n.startsWith(k)).map(p=>`<option value="${p.id}" ${p.id===s?'selected':''}>${p.n}</option>`).join('')}</optgroup>`).join('');
+let specId=null;
+
+
+function setVeh(){const v=VEH[$('veh').value];['vl','vw','vh2','va'].forEach((id,i)=>$(id).value=dv(v['LWHA'[i]]));$('vp').value=v.P}$('veh').onchange=setVeh;setVeh();
+
+function items(){$('items').innerHTML=cargo.map((c,i)=>`<div class="item"><div class="nm"><div class="sw" style="background:${COL[i%13]}"></div><div><label>Name</label><input type="text" data-i="${i}" data-k="n" value="${c.n}"></div><div><label>Qty</label><input type="number" data-i="${i}" data-k="q" value="${c.q}"></div><button class="g" data-d="${i}" style="padding:3px">×</button></div>
+<div class="g4" ${c.shape==='cyl'?'style="grid-template-columns:repeat(3,1fr)"':''}>${(c.shape==='cyl'?[['l','Diameter'],['h','Height'],['kg','kg']]:[['l','L'],['w','W'],['h','H'],['kg','kg']]).map(([k,t])=>`<div><label>${t}</label><input type="number" step="any" data-i="${i}" data-k="${k}" value="${k==='kg'?c[k]:dv(c[k])}"></div>`).join('')}</div>
+<div class="g3" style="grid-template-columns:110px 1fr;margin-top:6px"><div><label>Shape</label><select data-i="${i}" data-k="shape"><option value="box" ${c.shape!=='cyl'?'selected':''}>Box</option><option value="cyl" ${c.shape==='cyl'?'selected':''}>Cylinder</option></select></div><div><label>Pack in</label><select data-i="${i}" data-k="b">${boxOpts(c.b)}</select></div></div><div class="chk"><label><input type="checkbox" data-i="${i}" data-k="up" ${c.up?'checked':''}>Keep ${c.shape==='cyl'?'standing':'upright'}</label><label><input type="checkbox" data-i="${i}" data-k="st" ${c.st?'checked':''}>Stackable</label></div></div>`).join('');
+ document.querySelectorAll('#items [data-k]').forEach(e=>e.onchange=()=>{const c=cargo[e.dataset.i],k=e.dataset.k;c[k]=e.type==='checkbox'?e.checked:k==='n'||k==='b'||k==='shape'?e.value:'lwh'.includes(k)?toMM(+e.value):+e.value;if(c.shape==='cyl'&&(k==='l'||k==='shape'))c.w=c.l;if(k==='shape')items()});
+ document.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{cargo.splice(b.dataset.d,1);items()})}
+$('add').onclick=()=>{cargo.push({n:'Item '+(cargo.length+1),l:100,w:100,h:50,kg:.5,q:6,up:false,st:true,b:'auto',shape:'box'});items()};items();
+
+function specs(p){p=p||pk(specId)||PACKS[0];if(!p){$('spec').innerHTML='<div class="note">Choose a packaging or press Optimise to see its specs.</div>';return}
+ const f=[['Ext L',p.ext,0],['Ext W',p.ext,1],['Ext H',p.ext,2],['Use L',p.use,0],['Use W',p.use,1],['Use H',p.use,2]];
+ $('spec').innerHTML=`<select id="specSel">${PACKS.map(q=>`<option value="${q.id}" ${q.id===p.id?'selected':''}>${q.n}</option>`).join('')}</select><div class="note">Payload ${p.vol} L · dims in ${unit}</div><div class="g4" style="margin-top:6px">${f.map(([t,a,i])=>`<div><label>${t}</label><input type="number" step="any" data-a="${t[0]}" data-i="${i}" value="${dv(a[i])}"></div>`).join('')}<div><label>Tare kg</label><input type="number" step="any" id="sp_t" value="${p.tare}"></div><div><label>Max payload kg</label><input type="number" step="any" id="sp_m" placeholder="TBC" value="${p.mx??''}"></div></div>`;
+ document.querySelectorAll('#spec [data-a]').forEach(e=>e.onchange=()=>{(e.dataset.a==='E'?p.ext:p.use)[e.dataset.i]=toMM(+e.value);save()});
+ $('sp_t').onchange=e=>{p.tare=+e.target.value;save()};$('sp_m').onchange=e=>{p.mx=e.target.value===''?null:+e.target.value;save()};$('specSel').onchange=e=>{specId=e.target.value;specs()}}
+specs();
+
+function rowsUI(){$('rows').innerHTML=rows.map((r,i)=>`<div class="item"><div class="g4" style="grid-template-columns:1fr 60px 70px 26px;align-items:end"><div><label>Packaging${r.gen?' · from packing':''}</label><select data-r="${i}" data-k="p"><option value="custom" ${r.p==='custom'?'selected':''}>Custom pre-packed box</option>${PACKS.map(p=>`<option value="${p.id}" ${p.id===r.p?'selected':''}>${pn(p)}</option>`).join('')}</select></div><div><label>Qty</label><input type="number" data-r="${i}" data-k="q" value="${r.q}"></div><div><label>${r.p==='custom'?'Box kg':'Product kg'}</label><input type="number" step="any" data-r="${i}" data-k="kg" value="${r.kg}"></div><button class="g" data-x="${i}" style="padding:3px">×</button></div>${r.p==='custom'?`<div class="g4" style="margin-top:6px">${[['l','L'],['w','W'],['h','H']].map(([k,t])=>`<div><label>${t} (${unit})</label><input type="number" step="any" data-r="${i}" data-k="${k}" value="${dv(r[k])}"></div>`).join('')}<div class="chk" style="margin:0;align-items:end"><label><input type="checkbox" data-r="${i}" data-k="st" ${r.st!==false?'checked':''}>Stackable</label></div></div>`:''}</div>`).join('');
+ document.querySelectorAll('#rows [data-k]').forEach(e=>e.onchange=()=>{const k=e.dataset.k,r=rows[e.dataset.r];r[k]=k==='p'?e.value:e.type==='checkbox'?e.checked:'lwh'.includes(k)?toMM(+e.value):+e.value;if(k==='p'){if(e.value==='custom'&&!r.l)Object.assign(r,{l:400,w:300,h:300,st:true});rowsUI()}});
+ document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{rows.splice(b.dataset.x,1);rowsUI()})}
+$('addr').onclick=()=>{rows.push({p:'c28',q:2,kg:5});rowsUI()};rowsUI();
+
+// packing (extreme-point heuristic)
+function pack(list,L,W,H,maxKg,obs,top){
+ list=[...list].sort((a,b)=>b.l*b.w*b.h-a.l*a.w*a.h);const out=[...(obs||[])],left=[];let pts=[[0,0,0]],kg=0;out.forEach(b=>pts.push([b.x+b.l,b.y,b.z],[b.x,b.y+b.h,b.z],[b.x,b.y,b.z+b.w]));
+ const hit=(a,b)=>a.x<b.x+b.l&&a.x+a.l>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y&&a.z<b.z+b.w&&a.z+a.w>b.z;
+ for(const it of list){
+  if(kg+it.kg>maxKg){left.push(it);continue}
+  const ors=it.shape==='cyl'?[[it.l,it.l,it.h,'y']].concat(it.up?[]:[[it.h,it.l,it.l,'x'],[it.l,it.h,it.l,'z']]):[[it.l,it.w,it.h],[it.w,it.l,it.h]];if(!it.up&&it.shape!=='cyl')ors.push([it.l,it.h,it.w],[it.h,it.l,it.w],[it.w,it.h,it.l],[it.h,it.w,it.l]);
+  let best=null;
+  for(const [l,w,h,ax] of ors)for(const p of pts){const [x,y,z]=p;if(x+l>L||y+h>H||z+w>W)continue;
+   const b={x,y,z,l,w,h,ax};let ok=true,sup=0;
+   for(const o of out){if(hit(b,o)){ok=false;break}
+    if(y>0&&Math.abs(o.y+o.h-y)<.01){if(!o.st){ok=false;break}const ox=Math.min(x+l,o.x+o.l)-Math.max(x,o.x),oz=Math.min(z+w,o.z+o.w)-Math.max(z,o.z);if(ox>0&&oz>0)sup+=ox*oz}}
+   if(!ok||(y>0&&sup<.7*l*w))continue;const s=top?y*1e6+x*1e3+z:x*1e6+y*1e3+z;if(!best||s<best.s)best={s,b,p}}
+  if(!best){left.push(it);continue}
+  out.push({...best.b,t:it.t,st:it.st,kg:it.kg,n:it.n,cy:it.shape==='cyl'});kg+=it.kg;
+  pts=pts.filter(q=>q!==best.p);const b=best.b;pts.push([b.x+b.l,b.y,b.z],[b.x,b.y+b.h,b.z],[b.x,b.y,b.z+b.w]);
+ }return{out:out.filter(b=>!b.obs),left,kg}}
+function many(list,L,W,H,maxKg,top){const s=[];let rem=list;while(rem.length&&s.length<60){const r=pack(rem,L,W,H,maxKg,null,top);if(!r.out.length)break;s.push(r);rem=r.left}return{s,left:rem}}
+
+// 3D
+const view=$('view'),scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(40,1,.01,100),rd=new THREE.WebGLRenderer({antialias:true,alpha:true});
+view.appendChild(rd.domElement);const ctl=new THREE.OrbitControls(cam,rd.domElement);
+scene.add(new THREE.AmbientLight(0xffffff,.7));const dl=new THREE.DirectionalLight(0xffffff,.6);dl.position.set(5,10,6);scene.add(dl);
+const grp=new THREE.Group();scene.add(grp);
+const rs=()=>{const w=view.clientWidth,h=view.clientHeight;rd.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()};new ResizeObserver(rs).observe(view);
+(function lp(){requestAnimationFrame(lp);ctl.update();rd.render(scene,cam)})();
+function line(g,c,o,dash){const m=dash?new THREE.LineDashedMaterial({color:c,dashSize:.02,gapSize:.015}):new THREE.LineBasicMaterial({color:c,transparent:true,opacity:o||1});const l=new THREE.LineSegments(new THREE.EdgesGeometry(g,g.type==='CylinderGeometry'?40:1),m);if(dash)l.computeLineDistances();return l}
+let SC=null;
+const TOP=()=>$('doorPk').value==='top';
+function doorFx(sc,L,W,H){const d=sc.door||'none',c=0x0E34FF;grp.scale.x=d==='left'?-1:1;
+ const mat=new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.28,side:2,depthWrite:false}),edge=new THREE.LineBasicMaterial({color:c});
+ if(d==='left'){const g=new THREE.PlaneGeometry(W,H);[new THREE.Mesh(g,mat),new THREE.LineSegments(new THREE.EdgesGeometry(g),edge)].forEach(o=>{o.rotation.y=Math.PI/2;o.position.set(L/2,H/2,0);grp.add(o)})}
+ if(d==='top'){const pv=new THREE.Object3D();pv.position.set(0,H,-W/2);pv.rotation.x=-1.9;const g=new THREE.PlaneGeometry(L,W);g.rotateX(-Math.PI/2);g.translate(0,0,W/2);[new THREE.Mesh(g,mat),new THREE.LineSegments(new THREE.EdgesGeometry(g),edge)].forEach(o=>pv.add(o));grp.add(pv)}}
+function vanBody(sc){const v=sc.van,s=.001,L=sc.L*s,W=sc.W*s,H=sc.H*s,dh=v.DH*s,cl=(v.OL-sc.L-150)*s,ow=v.OW*s,top=H+.05,gr=-dh;
+ const sh=new THREE.Shape();[[-cl,gr+.3],[-cl,gr+.72],[-cl*.6,gr+(dh+H)*.55],[-cl*.2,top],[L+.12,top],[L+.12,gr+.33]].forEach((p,i)=>i?sh.lineTo(p[0],p[1]):sh.moveTo(p[0],p[1]));
+ const g=new THREE.ExtrudeGeometry(sh,{depth:ow,bevelEnabled:false});g.translate(-L/2,0,-ow/2);
+ grp.add(new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:0x7B8FFF,transparent:true,opacity:.2,depthWrite:false})));
+ grp.add(new THREE.LineSegments(new THREE.EdgesGeometry(g,20),new THREE.LineBasicMaterial({color:0x5a6bd6})));
+ const wg=new THREE.CylinderGeometry(.33,.33,.22,20);wg.rotateX(Math.PI/2);
+ [-cl*.55,v.axle*s].forEach(x=>[-1,1].forEach(k=>{const w=new THREE.Mesh(wg,new THREE.MeshLambertMaterial({color:0x1C1C3F}));w.position.set(x-L/2,gr+.33,k*(ow/2-.1));grp.add(w)}));
+ const bh=new THREE.Mesh(new THREE.PlaneGeometry(W,H),new THREE.MeshBasicMaterial({color:0x888888,transparent:true,opacity:.35,side:2}));bh.rotation.y=Math.PI/2;bh.position.set(-L/2,H/2,0);grp.add(bh)}
+function draw(n,reframe){
+ while(grp.children.length){const o=grp.children.pop();o.geometry&&o.geometry.dispose()}
+ const{L,W,H,boxes,off,inner}=SC,s=.001,cx=L*s/2,cz=W*s/2,ox=off?off[0]:0,oy=off?off[1]:0,oz=off?off[2]:0;
+ const f=line(new THREE.BoxGeometry(L*s,H*s,W*s),0x888888);f.position.set(0,H*s/2,0);grp.add(f);doorFx(SC,L*s,W*s,H*s);
+ if(SC.van)vanBody(SC);(SC.obs||[]).forEach(b=>{const g=new THREE.BoxGeometry(b.l*s,b.h*s,b.w*s),m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:0x6b7280}));m.position.set(b.x*s+b.l*s/2-cx,b.y*s+b.h*s/2,b.z*s+b.w*s/2-cz);grp.add(m)});
+ if(inner){const g=new THREE.BoxGeometry(inner[0]*s,inner[2]*s,inner[1]*s),e=line(g,0x0E34FF,1,true);e.position.set(ox*s+inner[0]*s/2-cx,oy*s+inner[2]*s/2,oz*s+inner[1]*s/2-cz);grp.add(e)}
+ const fl=new THREE.Mesh(new THREE.PlaneGeometry(L*s,W*s),new THREE.MeshBasicMaterial({color:0x888888,transparent:true,opacity:.15,side:2}));fl.rotation.x=-Math.PI/2;grp.add(fl);
+ boxes.slice(0,n).forEach(b=>{let g;if(b.cy){const r=(b.ax==='x'?b.w:b.l)/2*s;g=new THREE.CylinderGeometry(r,r,(b.ax==='x'?b.l:b.ax==='z'?b.w:b.h)*s,28);if(b.ax==='x')g.rotateZ(Math.PI/2);if(b.ax==='z')g.rotateX(Math.PI/2)}else g=new THREE.BoxGeometry(b.l*s,b.h*s,b.w*s);const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:COL[b.t%13]}));
+  m.position.set((b.x+ox)*s+b.l*s/2-cx,(b.y+oy)*s+b.h*s/2,(b.z+oz)*s+b.w*s/2-cz);grp.add(m);const e=line(g,0,.35);e.position.copy(m.position);grp.add(e)});
+ $('stepn').textContent=n+' / '+boxes.length;
+ if(reframe){const mir=SC.door==='left'?-1:1,v=SC.van,sh=v?-(v.OL-L-150)*s/2:0,d=(v?v.OL*.95:Math.max(L,W,H)*2.1)*s;ctl.target.set(mir*sh,H*s/2,0);cam.position.set(mir*(-d*.8+sh),d*.65,d);cam.near=d/100;cam.updateProjectionMatrix()}}
+function show(sc,reframe){SC=sc;$('step').max=sc.boxes.length;$('step').value=sc.boxes.length;draw(sc.boxes.length,reframe)}
+$('step').oninput=e=>draw(+e.target.value,false);rs();
+
+function stats(a,b){[1,2,3,4].forEach(i=>{$('s'+i).textContent=a[i-1];$('l'+i).textContent=b[i-1]})}
+const msg=(t,ok)=>{$('msg').className=ok?'ok':'bad';$('msg').textContent=t};
+
+function calcPk(){
+ const list=[];cargo.forEach((c,i)=>{for(let k=0;k<c.q;k++)list.push({...c,t:i})});
+ if(!list.length)return msg('Add some product first.');
+ const groups={};list.forEach(it=>(groups[it.b||'auto']=groups[it.b||'auto']||[]).push(it));
+ const S=[];let left=[];
+ for(const [id,its] of Object.entries(groups)){
+  if(id!=='auto'){const p=pk(id),r=many(its,p.use[0],p.use[1],p.use[2],p.mx??1e9,TOP());r.s.forEach(x=>S.push({...x,p}));left=left.concat(r.left);continue}
+  const ev=PACKS.map(p=>({p,r:many(its,p.use[0],p.use[1],p.use[2],p.mx??1e9,TOP())})).sort((a,b)=>(a.r.left.length?1:0)-(b.r.left.length?1:0)||a.r.s.length-b.r.s.length||a.p.vol-b.p.vol);
+  const best=ev[0];best.r.s.forEach(x=>S.push({...x,p:best.p}));left=left.concat(best.r.left)}
+ failPanel(list,S,left);
+ if(!S.length)return msg(`⚠ ${left.length} product unit${left.length>1?'s':''} could not be packed`);
+ const cnt={};S.forEach(x=>cnt[x.p.n]=(cnt[x.p.n]||0)+1);
+ const sum=Object.entries(cnt).map(([n,c])=>c+' × '+n).join(' + ');
+ msg(left.length?`⚠ ${left.length} product unit${left.length>1?'s':''} could not be packed`:`✓ ${sum}`,!left.length);
+ R={mode:1,s:S,list};finish()}
+function failPanel(list,S,left){const e=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+ let h=`<div class="sumline"><b>${list.length}</b> product units → <b>${list.length-left.length}</b> packed / <b>${left.length}</b> unpacked → <b>${S.length}</b> shipping container${S.length===1?'':'s'}</div>`;
+ const g={};left.forEach(it=>(g[it.t]=g[it.t]||[]).push(it));
+ Object.entries(g).forEach(([t,its])=>{const c=cargo[t],it=its[0],p=c.b&&c.b!=='auto'?pk(c.b):null,cands=p?[p]:PACKS,sd=[it.l,it.w,it.h].sort((a,b)=>a-b);
+  const fits=q=>{const u=[...q.use].sort((a,b)=>a-b);return it.up?(it.h<=q.use[2]&&((it.l<=q.use[0]&&it.w<=q.use[1])||(it.w<=q.use[0]&&it.l<=q.use[1]))):sd.every((v,i)=>v<=u[i])};
+  let why;if(!cands.some(fits))why=p?'Product dimensions exceed the usable internal dimensions of the selected container.':'Product dimensions exceed the usable internal dimensions of every available container.';
+  else if(cands.every(q=>q.mx!=null&&it.kg>q.mx))why='Product weight exceeds the maximum payload of the selected container.';
+  else why='Container limit reached or stacking rules prevented placement.';
+  h+=`<div class="fail"><b>${e(c.n)} — ${its.length} unit${its.length>1?'s':''}</b><br>${it.shape==='cyl'?'Ø'+dv(it.l)+' × '+dv(it.h):dv(it.l)+' × '+dv(it.w)+' × '+dv(it.h)} ${unit}<br>Selected: ${p?e(p.n):'Auto – smallest that fits'}<br>Reason: ${why}</div>`});
+ $('res').innerHTML=h}
+function syncRows(){const g={};R.s.forEach(x=>{const a=g[x.p.id]=g[x.p.id]||{p:x.p.id,q:0,t:0};a.q++;a.t+=x.kg});
+ rows=Object.values(g).map(a=>({p:a.p,q:a.q,kg:+(a.t/a.q).toFixed(2),gen:true})).concat(rows.filter(r=>!r.gen));rowsUI()}
+function finish(){$('shp').innerHTML=R.s.map((x,i)=>`<option value="${i}">Container ${i+1} of ${R.s.length} · ${x.p.n}</option>`).join('');$('shp').hidden=false;$('tov').hidden=false;syncRows();showPk(0,true)}
+
+function showPk(i,rf){const{s}=R,r=s[i],p=r.p,vol=r.out.reduce((a,b)=>a+b.l*b.w*b.h,0),pv=p.use[0]*p.use[1]*p.use[2],off=p.ext.map((e,k)=>(e-p.use[k])/2);
+ show({L:p.ext[0],W:p.ext[1],H:p.ext[2],boxes:r.out,off:[off[0],off[1],off[2]],inner:[p.use[0],p.use[1],p.use[2]],door:$('doorPk').value},rf);
+ stats([R.s.length+(R.s.length>1?' shipping containers':' shipping container'),(vol/pv*100).toFixed(1)+'%',r.kg.toFixed(1)+' kg ('+(r.kg+p.tare).toFixed(1)+' gross)',R.s.reduce((a,x)=>a+x.out.length,0)+'/'+R.list.length],['Shippers required','Payload space used (this container)','Product weight (this container)','Product units packed'])}
+$('shp').onchange=e=>R&&R.mode===1&&showPk(+e.target.value,false);
+
+function calcVh(){
+ const L=toMM(+$('vl').value),W=toMM(+$('vw').value),H=toMM(+$('vh2').value),A=toMM(+$('va').value),mx=+$('vp').value,list=[];let gross=0;
+ const ax=Math.round(L*.5),ag=Math.max(0,(W-A)/2),obs=ag>0?[{x:ax,y:0,z:0,l:450,w:ag,h:260,obs:true,st:true,t:-1},{x:ax,y:0,z:W-ag,l:450,w:ag,h:260,obs:true,st:true,t:-1}]:[];
+ rows.forEach((r,i)=>{const p=r.p==='custom'?{n:'Pre-packed box',ext:[r.l,r.w,r.h],tare:0,st:r.st!==false}:{...pk(r.p),st:true};for(let k=0;k<r.q;k++){list.push({n:p.n,l:p.ext[0],w:p.ext[1],h:p.ext[2],kg:p.tare+r.kg,up:true,st:p.st,t:i})}});
+ if(!list.length)return msg('Add packaging first.');
+ const r=pack(list,L,W,H,mx,obs,$('doorVh').value==='top');$('res').innerHTML='';R={mode:2};$('shp').hidden=true;$('tov').hidden=true;
+ const vol=r.out.reduce((a,b)=>a+b.l*b.w*b.h,0);
+ msg(r.left.length?`✗ ${r.left.length} item(s) do not fit (space or ${mx} kg limit)`:'✓ Everything fits',!r.left.length);
+ show({L,W,H,boxes:r.out,van:{...VEH[$('veh').value],axle:ax+225},obs,door:$('doorVh').value},true);stats([r.out.length+' / '+list.length,(vol/(L*W*H)*100).toFixed(1)+'%',r.kg.toFixed(0)+' / '+mx+' kg',r.left.length],['Shippers loaded','Cargo volume used','Weight vs payload','Left behind'])}
+
+$('go').onclick=()=>mode===1?calcPk():calcVh();
+$('tov').onclick=()=>{rowsUI();tab(2);calcVh()};
+function tab(m){mode=m;m===1?calcPk():calcVh();$('pk').hidden=m!==1;$('vh').hidden=m!==2;$('t1').className=m===1?'on':'';$('t2').className=m===2?'on':'';$('shp').hidden=m!==1||!R||R.mode!==1}
+$('t1').onclick=()=>tab(1);$('t2').onclick=()=>tab(2);
+$('unit').onchange=e=>{const ids=['vl','vw','vh2','va'],m=ids.map(id=>toMM(+$(id).value));unit=e.target.value;ids.forEach((id,i)=>$(id).value=dv(m[i]));document.querySelectorAll('.u').forEach(x=>x.textContent=unit);items();rowsUI();specs()};$('unit').value=unit;document.querySelectorAll('.u').forEach(x=>x.textContent=unit);['vl','vw','vh2','va'].forEach(id=>$(id).step='any');$('doorPk').onchange=$('doorVh').onchange=()=>$('go').click();
+const back=p=>{const q=PRESET.find(x=>x.id===p.id);Object.assign(p,JSON.parse(JSON.stringify(q)))};
+$('rst').onclick=()=>{const p=pk(specId)||PACKS[0];back(p);save();specs(p);$('go').click()};
+let ra=0;$('rsta').onclick=()=>{if(!ra){ra=1;$('rsta').textContent='Sure? Click again';setTimeout(()=>{ra=0;$('rsta').textContent='Reset all'},3000);return}ra=0;$('rsta').textContent='Reset all';PACKS.forEach(back);save();specs();$('go').click()};
+calcPk();
+</script></body></html>
