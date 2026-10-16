@@ -29,7 +29,7 @@ button.g{background:transparent;color:var(--mu);border:1px solid var(--bd)}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}@media(max-width:560px){.stats{grid-template-columns:1fr 1fr}}
 .stats div{background:var(--card);border:1px solid var(--bd);border-radius:4px;padding:10px}
 .stats b{display:block;font-size:24px;font-weight:300}.stats span{font-size:12px;color:var(--mu)}
-#msg{font-size:13px}.bar2{position:sticky;top:0;z-index:5;display:flex;gap:14px;align-items:center;background:var(--bg);padding:0 0 10px}@media(max-width:880px){body{padding-bottom:72px}.bar2{position:fixed;left:0;right:0;bottom:0;top:auto;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--bd)}}#go{padding:10px 26px;font-weight:600;white-space:nowrap}.ok{color:#12926a}.bad{color:#d92d20}
+#msg{font-size:13px}.bar2{position:sticky;top:0;z-index:5;display:flex;gap:14px;align-items:center;background:var(--bg);padding:0 0 10px}@media(max-width:880px){body{padding-bottom:72px}.bar2{position:fixed;left:0;right:0;bottom:0;top:auto;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--bd)}}#go,#pdf{padding:10px 18px;font-weight:600;white-space:nowrap}#go{padding:10px 26px}.ok{color:#12926a}.bad{color:#d92d20}
 .note{font-size:11px;color:var(--mu);margin-top:6px}.fail{border:1px solid var(--bd);border-left:3px solid #d92d20;border-radius:8px;padding:8px 10px;margin-top:8px;background:var(--card);font-size:13px;line-height:1.5}.sumline{font-size:13px;color:var(--mu)}
 </style></head><body>
 <div class="app"><div>
@@ -59,7 +59,7 @@ button.g{background:transparent;color:var(--mu);border:1px solid var(--bd)}
  
 </div></div>
 
-<div><div class="bar2"><button id="go">Optimise load</button><div id="msg"></div></div><div id="view"><div class="hint">Drag to rotate · scroll to zoom · door shown in blue</div></div>
+<div><div class="bar2"><button id="go">Optimise load</button><button class="g" id="pdf" hidden>Download PDF</button><div id="msg"></div></div><div id="view"><div class="hint">Drag to rotate · scroll to zoom · door shown in blue</div></div>
  <div style="margin-top:8px;display:flex;gap:10px;align-items:center"><select id="shp" style="width:auto"></select>
   <input type="range" id="step" min="0" max="0" value="0" style="flex:1"><span id="stepn" style="font-size:12px;color:var(--mu)"></span></div>
  <div class="stats"><div><b id="s1">–</b><span id="l1"></span></div><div><b id="s2">–</b><span id="l2"></span></div><div><b id="s3">–</b><span id="l3"></span></div><div><b id="s4">–</b><span id="l4"></span></div></div>
@@ -68,6 +68,7 @@ button.g{background:transparent;color:var(--mu);border:1px solid var(--bd)}
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 const DEF=[
@@ -259,6 +260,64 @@ function calcVh(){
  const vol=r.out.reduce((a,b)=>a+b.l*b.w*b.h,0);
  msg(r.left.length?`✗ ${r.left.length} item(s) do not fit (space or ${mx} kg limit)`:'✓ Everything fits',!r.left.length);
  show({L,W,H,boxes:r.out,van:{...VEH[$('veh').value],axle:ax+225},obs,door:$('doorVh').value},true);stats([r.out.length+' / '+list.length,(vol/(L*W*H)*100).toFixed(1)+'%',r.kg.toFixed(0)+' / '+mx+' kg',r.left.length],['Shippers loaded','Cargo volume used','Weight vs payload','Left behind'])}
+
+/* PDF export */
+let DL=null;
+if(window.claude&&window.claude.use)window.claude.use('downloads').then(d=>{if(d){DL=d;$('pdf').hidden=false}}).catch(()=>{});
+const T=s=>String(s==null?'':s).replace(/[\u2013\u2014]/g,'-').replace(/\u2192/g,'->').replace(/\u2713/g,'OK').replace(/[\u2717\u26a0]/g,'!').replace(/[^\x00-\xFF]/g,'');
+const U=h=>String(h).replace(/<br\s*\/?>/g,'\n').replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&amp;/g,'&');
+function snap(){ctl.update();rd.setClearColor(0xffffff,1);rd.render(scene,cam);const u=rd.domElement.toDataURL('image/jpeg',.85),w=rd.domElement.width,h=rd.domElement.height;rd.setClearColor(0x000000,0);rd.render(scene,cam);return{u,w,h}}
+async function makePDF(){
+ const J=window.jspdf&&window.jspdf.jsPDF,b=$('pdf');
+ if(!J||!DL){$('msg').className='bad';$('msg').textContent='PDF tools did not load. Check your connection and reload.';return}
+ b.disabled=true;b.textContent='Preparing PDF...';
+ await new Promise(r=>setTimeout(r,30));
+ const orig=mode;let D=null;
+ try{
+  R=null;calcPk();
+  const stat=[1,2,3,4].map(i=>[$('l'+i).textContent,$('s'+i).textContent]),pkRes=$('res').innerHTML,pkMsg=$('msg').textContent,PK=R&&R.mode===1?R:null,cons=[],pdoor=$('doorPk').value;
+  if(PK)PK.s.slice(0,40).forEach((x,i)=>{showPk(i,true);cons.push({x,img:snap()})});
+  let veh=null;
+  if(rows.length){calcVh();if(R&&R.mode===2)veh={msg:$('msg').textContent,stat:[1,2,3,4].map(i=>[$('l'+i).textContent,$('s'+i).textContent]),img:snap(),name:$('veh').value,dims:['vl','vw','vh2','va'].map(id=>$(id).value),pay:$('vp').value,door:$('doorVh').value,rows:rows.map(r=>({...r}))}}
+  D={stat,pkRes,pkMsg,PK,cons,pdoor,veh,more:PK?Math.max(0,PK.s.length-40):0};
+ }catch(e){D=null;console.error(e)}
+ finally{tab(orig);b.disabled=false;b.textContent='Download PDF'}
+ if(!D){$('msg').className='bad';$('msg').textContent='Could not build the PDF.';return}
+ try{
+  const doc=new J({unit:'mm',format:'a4'}),W=210,M=14,NAVY=[28,28,63],BLUE=[14,52,255],GR=[93,96,129],cap=s=>s?s[0].toUpperCase()+s.slice(1):'';
+  const dm=a=>a.map(v=>dv(v)).join(' x ')+' '+unit;let y=0;
+  const head=()=>{doc.setFont('helvetica','normal');doc.setFontSize(22);doc.setTextColor(...NAVY);doc.text('Arca',M,M+7);const tw=doc.getTextWidth('Arca');doc.setFillColor(...BLUE);doc.rect(M+tw+.8,M-.2,2.6,2.6,'F');doc.setFontSize(8);doc.setTextColor(...BLUE);doc.text('BioLogistics',M,M+11.5);doc.setTextColor(...GR);doc.setFontSize(9);doc.text('Load plan',W-M,M+4,{align:'right'});doc.text(new Date().toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'}),W-M,M+9,{align:'right'});y=M+22};
+  const need=h=>{if(y+h>283){doc.addPage();head()}};
+  const H2=t=>{need(14);y+=2;doc.setFillColor(...BLUE);doc.rect(M,y-2.6,2.2,2.2,'F');doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...NAVY);doc.text(T(t),M+4,y);doc.setFont('helvetica','normal');y+=6};
+  const P=(t,sz=9,col=NAVY)=>{doc.setFontSize(sz);doc.setTextColor(...col);doc.splitTextToSize(T(t),W-2*M).forEach(l=>{need(5);doc.text(l,M,y);y+=4.6})};
+  const table=(cols,data)=>{const cell=(t,x,c)=>doc.text(doc.splitTextToSize(T(t),c[1]-2)[0]||'',c[2]==='r'?x+c[1]-2:x,y,{align:c[2]==='r'?'right':'left'});
+   const hdr=()=>{need(14);doc.setFillColor(233,240,239);doc.rect(M,y-4,W-2*M,6.5,'F');doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...NAVY);let x=M+1;cols.forEach(c=>{cell(c[0],x,c);x+=c[1]});y+=6;doc.setFont('helvetica','normal')};
+   hdr();data.forEach(r=>{if(y>281){doc.addPage();head();hdr()}doc.setFontSize(8.5);doc.setTextColor(...NAVY);let x=M+1;cols.forEach((c,i)=>{cell(r[i],x,c);x+=c[1]});doc.setDrawColor(220,226,225);doc.line(M,y+1.8,W-M,y+1.8);y+=5.6});y+=3};
+  const pic=img=>{const mw=W-2*M,mh=283-y;if(mh<60){doc.addPage();head();return pic(img)}let w=mw,h=w*img.h/img.w;if(h>mh){h=mh;w=h*img.w/img.h}doc.addImage(img.u,'JPEG',M+(mw-w)/2,y,w,h);y+=h+4};
+  head();H2('Summary');
+  [D.stat[0],D.stat[3]].forEach(([l,v])=>P(l+': '+v));
+  P(D.pkMsg,9.5);
+  const tmp=document.createElement('div');tmp.innerHTML=D.pkRes;const sl=tmp.querySelector('.sumline');if(sl)P(sl.textContent,9,GR);
+  H2('Products');
+  table([['Product',40],['Shape',15],['Size',34],['Qty',10,'r'],['kg each',14,'r'],['Temp',15],['Pack in',54]],cargo.map(c=>[c.n,c.shape==='cyl'?'Cylinder':'Box',c.shape==='cyl'?'D '+dv(c.l)+' x '+dv(c.h)+' '+unit:dv(c.l)+' x '+dv(c.w)+' x '+dv(c.h)+' '+unit,c.q,c.kg,(c.tp||'+4')+'\u00b0C',(!c.b||c.b==='auto'||String(c.b).slice(0,2)==='a:')?'Auto':(pk(c.b)?pk(c.b).n:'')]));
+  const fl=[...tmp.querySelectorAll('.fail')];
+  if(fl.length){H2('Products that could not be packed');fl.forEach(f=>{const L=U(f.innerHTML).split('\n');need(L.length*4.6+4);doc.setFillColor(217,45,32);doc.rect(M,y-3.4,1,L.length*4.6,'F');L.forEach((l,i)=>{doc.setFont('helvetica',i?'normal':'bold');doc.setFontSize(9);doc.setTextColor(...NAVY);doc.text(T(l),M+3,y);y+=4.6});y+=2;doc.setFont('helvetica','normal')})}
+  if(D.PK){H2('Containers ('+D.PK.s.length+')');
+   table([['#',10],['Box',68],['Temp',18],['Units',14,'r'],['Product kg',22,'r'],['Gross kg',24,'r'],['Payload used',26,'r']],D.PK.s.map((x,i)=>{const p=x.p,vol=x.out.reduce((a,o)=>a+o.l*o.w*o.h,0),pv=p.use[0]*p.use[1]*p.use[2];return[i+1,p.n,x.tp+'\u00b0C',x.out.length,x.kg.toFixed(1),(x.kg+p.tare).toFixed(1),(vol/pv*100).toFixed(0)+'%']}));
+   if(D.more)P(D.more+' more container(s) are listed above but not drawn (first 40 shown).',8.5,GR)}
+  D.cons.forEach(({x,img},i)=>{const p=x.p;doc.addPage();head();H2('Container '+(i+1)+' of '+D.PK.s.length+': '+p.n);
+   P('Temperature '+x.tp+'\u00b0C   |   Outer '+dm(p.ext)+'   |   Usable '+dm(p.use)+'   |   Empty weight '+p.tare+' kg   |   Door: '+cap(D.pdoor),9,GR);
+   const g={};x.out.forEach(o=>{const k=o.n||'Item',e=g[k]=g[k]||{n:0,kg:0};e.n++;e.kg+=o.kg});
+   table([['Product',110],['Units',24,'r'],['Weight kg',48,'r']],Object.entries(g).map(([k,v])=>[k,v.n,v.kg.toFixed(2)]));pic(img)});
+  if(D.veh){const v=D.veh;doc.addPage();head();H2('Vehicle load plan');P(v.name,10);
+   P('Load space '+v.dims[0]+' x '+v.dims[1]+' x '+v.dims[2]+' '+unit+'   |   between arches '+v.dims[3]+' '+unit+'   |   payload '+v.pay+' kg   |   Door: '+cap(v.door),9,GR);
+   P(v.msg,9.5);v.stat.forEach(([l,s])=>P(l+': '+s));
+   H2('Load');table([['Packaging',110],['Qty',24,'r'],['kg each (product)',48,'r']],v.rows.map(r=>[r.p==='custom'?'Pre-packed box '+dm([r.l,r.w,r.h]):(pk(r.p)?pk(r.p).n:r.p),r.q,r.kg]));pic(v.img)}
+  const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(...GR);doc.text('Planning aid only. Check against the actual packaging and vehicle specifications.',W/2,287,{align:'center'});doc.text('Arca BioLogistics - Load plan - page '+i+' of '+n,W/2,292,{align:'center'})}
+  await DL.save({filename:'Arca-load-plan-'+new Date().toISOString().slice(0,10)+'.pdf',data:doc.output('blob')});
+ }catch(e){if(!e||e.code!=='declined'){console.error(e);$('msg').className='bad';$('msg').textContent='The PDF could not be saved.'}}
+}
+$('pdf').onclick=makePDF;
 
 $('go').onclick=()=>mode===1?calcPk():calcVh();
 $('tov').onclick=()=>{rowsUI();tab(2);calcVh()};
