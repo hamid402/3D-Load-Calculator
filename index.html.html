@@ -125,13 +125,13 @@ const pk=id=>PACKS.find(p=>p.id===id);
 
 
 Object.keys(VEH).forEach(k=>$('veh').add(new Option(k,k)));
-const pn=p=>p.n,GRP=[['Credo','Credo'],['Single use dry ice','Single'],['Reusable dry ice','Reusable'],['Tower','Tower'],['Peli','Peli']],tmp=p=>p.ts||[],boxOpts=s=>`${TP.map(t=>`<option value="a:${t}" ${(!s||s==='auto'?'a:+4':s)==='a:'+t?'selected':''}>Auto – ${t}°C, smallest that fits</option>`).join('')}`+GRP.map(([t,k])=>`<optgroup label="${t}">${[...new Set(PACKS.filter(p=>p.n.startsWith(k)).map(base))].map(b=>{const p=PACKS.find(q=>base(q)===b);return `<option value="${p.id}" ${s&&pk(s)&&base(pk(s))===b?'selected':''}>${b} ${tf(p.ts)}</option>`}).join('')}</optgroup>`).join('');
+const pn=p=>p.n,GRP=[['Credo','Credo'],['Single use dry ice','Single'],['Reusable dry ice','Reusable'],['Tower','Tower'],['Peli','Peli']],tmp=p=>p.ts||[],boxOpts=(s,tp)=>(`<option value="auto" ${!s||s==='auto'||String(s).slice(0,2)==='a:'?'selected':''}>Auto – smallest that fits</option>`+GRP.map(([t,k])=>`<optgroup label="${t}">${[...new Set(PACKS.filter(p=>p.n.startsWith(k)&&p.ts.includes(tp||'+4')).map(base))].map(b=>{const p=PACKS.find(q=>base(q)===b);return `<option value="${p.id}" ${s&&pk(s)&&base(pk(s))===b?'selected':''}>${b} ${tf(p.ts)}</option>`}).join('')}</optgroup>`).join('')).replace(/<optgroup label="[^"]*"><\/optgroup>/g,'');
 const TP=['+20','+4','-20','-80'],TL={'+20':'+20°C (ambient)','+4':'+4°C (refrigerated)','-20':'-20°C (frozen)','-80':'-80°C (dry ice)'},
  base=p=>p.n.replace(/ [+-]\d+°C$/,''),
  temps=p=>TP.filter(t=>PACKS.some(q=>base(q)===base(p)&&tmp(q).includes(t))),
  variant=(p,t)=>PACKS.find(q=>base(q)===base(p)&&tmp(q).includes(t))||p,
- sel=c=>{const b=c.b,tp=c.tp||'+4';if(b&&String(b).slice(0,2)==='a:')return{p:null,at:b.slice(2)};const q=b&&b!=='auto'?pk(b):null;if(!q)return{p:null,at:tp};return{p:q,at:(q.ts||['+4'])[0]}},
- lab=x=>x.p.n,
+ sel=c=>{const b=c.b,tp=c.tp||'+4';if(b&&String(b).slice(0,2)==='a:')return{p:null,at:b.slice(2)};const q=b&&b!=='auto'?pk(b):null;if(!q)return{p:null,at:tp};return{p:q,at:(q.ts||['+4']).includes(tp)?tp:q.ts[0]}},
+ lab=x=>x.p.n+' · '+x.tp+'°C',
  tf=ts=>ts.length>1?ts.slice(0,-1).join(', ')+' and '+ts[ts.length-1]+'°C':ts[0]+'°C';
 let specId=null;
 
@@ -140,8 +140,8 @@ function setVeh(){const v=VEH[$('veh').value];['vl','vw','vh2','va'].forEach((id
 
 function items(){$('items').innerHTML=cargo.map((c,i)=>`<div class="item"><div class="nm"><div class="sw" style="background:${COL[i%13]}"></div><div><label>Name</label><input type="text" data-i="${i}" data-k="n" value="${c.n}"></div><div><label>Qty</label><input type="number" data-i="${i}" data-k="q" value="${c.q}"></div><button class="g" data-d="${i}" style="padding:3px">×</button></div>
 <div class="g4" ${c.shape==='cyl'?'style="grid-template-columns:repeat(3,1fr)"':''}>${(c.shape==='cyl'?[['l','Diameter'],['h','Height'],['kg','kg']]:[['l','L'],['w','W'],['h','H'],['kg','kg']]).map(([k,t])=>`<div><label>${t}</label><input type="number" step="any" data-i="${i}" data-k="${k}" value="${k==='kg'?c[k]:dv(c[k])}"></div>`).join('')}</div>
-<div style="margin-top:6px"><label>Pack in</label><select data-i="${i}" data-k="b">${boxOpts(c.b)}</select></div><div class="g3" style="grid-template-columns:150px;margin-top:6px"><div><label>Shape</label><select data-i="${i}" data-k="shape"><option value="box" ${c.shape!=='cyl'?'selected':''}>Box</option><option value="cyl" ${c.shape==='cyl'?'selected':''}>Cylinder</option></select></div></div><div class="chk"><label><input type="checkbox" data-i="${i}" data-k="up" ${c.up?'checked':''}>Keep ${c.shape==='cyl'?'standing':'upright'}</label><label><input type="checkbox" data-i="${i}" data-k="st" ${c.st?'checked':''}>Stackable</label></div></div>`).join('');
- document.querySelectorAll('#items [data-k]').forEach(e=>e.onchange=()=>{const c=cargo[e.dataset.i],k=e.dataset.k;c[k]=e.type==='checkbox'?e.checked:k==='n'||k==='b'||k==='shape'||k==='tp'?e.value:'lwh'.includes(k)?toMM(+e.value):+e.value;if(c.shape==='cyl'&&(k==='l'||k==='shape'))c.w=c.l;if(k==='shape'||k==='b')items()});
+<div class="g3" style="grid-template-columns:1fr 150px;margin-top:6px"><div><label>Temperature</label><select data-i="${i}" data-k="tp">${TP.map(t=>`<option value="${t}" ${(c.tp||'+4')===t?'selected':''}>${TL[t]}</option>`).join('')}</select></div><div><label>Shape</label><select data-i="${i}" data-k="shape"><option value="box" ${c.shape!=='cyl'?'selected':''}>Box</option><option value="cyl" ${c.shape==='cyl'?'selected':''}>Cylinder</option></select></div></div><div style="margin-top:6px"><label>Pack in</label><select data-i="${i}" data-k="b">${boxOpts(c.b,c.tp||'+4')}</select></div><div class="chk"><label><input type="checkbox" data-i="${i}" data-k="up" ${c.up?'checked':''}>Keep ${c.shape==='cyl'?'standing':'upright'}</label><label><input type="checkbox" data-i="${i}" data-k="st" ${c.st?'checked':''}>Stackable</label></div></div>`).join('');
+ document.querySelectorAll('#items [data-k]').forEach(e=>e.onchange=()=>{const c=cargo[e.dataset.i],k=e.dataset.k;c[k]=e.type==='checkbox'?e.checked:k==='n'||k==='b'||k==='shape'||k==='tp'?e.value:'lwh'.includes(k)?toMM(+e.value):+e.value;if(c.shape==='cyl'&&(k==='l'||k==='shape'))c.w=c.l;if(k==='tp'&&c.b&&c.b!=='auto'){const q=pk(c.b);if(q&&!q.ts.includes(c.tp))c.b='auto'}if(k==='shape'||k==='b'||k==='tp')items()});
  document.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{cargo.splice(b.dataset.d,1);items()})}
 $('add').onclick=()=>{cargo.push({n:'Item '+(cargo.length+1),l:100,w:100,h:50,kg:.5,q:6,up:false,st:true,b:'auto',shape:'box'});items()};items();
 
@@ -238,7 +238,7 @@ function failPanel(list,S,left){const e=s=>String(s).replace(/[&<>"]/g,ch=>({'&'
   let why;if(!cands.some(fits))why=p?'Product dimensions exceed the usable internal dimensions of the selected container.':'Product dimensions exceed the usable internal dimensions of every available '+at+'°C container.';
   else if(cands.every(q=>q.mx!=null&&it.kg>q.mx))why='Product weight exceeds the maximum payload of the selected container.';
   else why='Container limit reached or stacking rules prevented placement.';
-  h+=`<div class="fail"><b>${e(c.n)} — ${its.length} unit${its.length>1?'s':''}</b><br>${it.shape==='cyl'?'Ø'+dv(it.l)+' × '+dv(it.h):dv(it.l)+' × '+dv(it.w)+' × '+dv(it.h)} ${unit}<br>Selected: ${p?e(p.n):'Auto '+at+'°C – smallest that fits'}<br>Reason: ${why}</div>`});
+  h+=`<div class="fail"><b>${e(c.n)} — ${its.length} unit${its.length>1?'s':''}</b><br>${it.shape==='cyl'?'Ø'+dv(it.l)+' × '+dv(it.h):dv(it.l)+' × '+dv(it.w)+' × '+dv(it.h)} ${unit}<br>Selected: ${p?e(p.n):'Auto – smallest that fits'}<br>Temperature: ${at}°C<br>Reason: ${why}</div>`});
  $('res').innerHTML=h}
 function syncRows(){const g={};R.s.forEach(x=>{const kk=x.p.id+'|'+x.tp,a=g[kk]=g[kk]||{p:x.p.id,tp:x.tp,q:0,t:0};a.q++;a.t+=x.kg});
  rows=Object.values(g).map(a=>({p:a.p,tp:a.tp,q:a.q,kg:+(a.t/a.q).toFixed(2),gen:true})).concat(rows.filter(r=>!r.gen));rowsUI()}
