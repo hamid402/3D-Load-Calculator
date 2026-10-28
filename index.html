@@ -24,8 +24,13 @@ a.tool:hover{border-color:var(--ac)}
  <p class="lead">Internal planning tools for operations.</p>
  <div class="tools">
   <a class="tool" href="load-planner.html"><h2>Load Planner</h2><p>Pack products into shippers by temperature, then load the shippers into an Arca van. 3D view and PDF export.</p></a>
+  <a class="tool" href="mawb-tracker.html"><h2>MAWB Tracker</h2><p>One shared list of air waybills for the whole team. Add a MAWB, set its status and ETA, and track it with one click. Staff sign-in required.</p></a>
   <div class="tool soon"><h2>More tools coming</h2><p>New tools will appear here and in the bar at the top.</p></div>
  </div>
 </main>
+<script>
+// Supabase sends invite and password-reset links to the site's front page; pass them on to the MAWB Tracker.
+if(/(access_token|error_description|type=(invite|recovery))/.test(location.hash))location.replace('mawb-tracker.html'+location.hash);
+</script>
 <script src="shared/nav.js"></script>
 </body></html>

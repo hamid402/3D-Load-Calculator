@@ -1,7 +1,8 @@
 /* Arca site nav. To add a tool, add one line to TOOLS. Pages put <nav id="arcaNav" data-current="<id>"></nav> where the bar goes. */
 (function(){
  var TOOLS=[
-  {id:'load-planner',name:'Load Planner',href:'load-planner.html'}
+  {id:'load-planner',name:'Load Planner',href:'load-planner.html'},
+  {id:'mawb-tracker',name:'MAWB Tracker',href:'mawb-tracker.html'}
  ];
  var el=document.getElementById('arcaNav');if(!el)return;
  var cur=el.getAttribute('data-current');

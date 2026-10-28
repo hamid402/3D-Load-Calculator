@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Arca MAWB Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/arca.css">
+<style>
+/* Layout: one column at 1450px. Header (title + who's signed in), filter chips + search + actions, then the shipment table; rows become stacked cards under 760px.
+   The MAWB number is the one bold element: airline prefix in brand blue, serial grouped 4+4 like the printed air waybill. Status colours are semantic, separate from the brand accent. */
+:root{
+ --s-booked:#5d6081;--s-booked-bg:#eceef4;
+ --s-departed:#0E34FF;--s-departed-bg:#e3e8ff;
+ --s-transit:#5a45c9;--s-transit-bg:#ece8ff;
+ --s-arrived:#0a7a72;--s-arrived-bg:#dcf2ef;
+ --s-customs:#8f5600;--s-customs-bg:#fbefd8;
+ --s-delivered:#12805e;--s-delivered-bg:#e2f3ec;
+ --s-issue:#c4281c;--s-issue-bg:#fce9e7;
+}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--s-booked:#b9bce0;--s-booked-bg:#2e2e66;--s-departed:#9aabff;--s-departed-bg:#28307e;--s-transit:#c3b6ff;--s-transit-bg:#3a2f7a;--s-arrived:#6fe0d2;--s-arrived-bg:#173f4a;--s-customs:#ffc970;--s-customs-bg:#4a3a1f;--s-delivered:#4fd1a1;--s-delivered-bg:#1d4248;--s-issue:#ff7a6e;--s-issue-bg:#4a2343}}
+:root[data-theme="dark"]{--s-booked:#b9bce0;--s-booked-bg:#2e2e66;--s-departed:#9aabff;--s-departed-bg:#28307e;--s-transit:#c3b6ff;--s-transit-bg:#3a2f7a;--s-arrived:#6fe0d2;--s-arrived-bg:#173f4a;--s-customs:#ffc970;--s-customs-bg:#4a3a1f;--s-delivered:#4fd1a1;--s-delivered-bg:#1d4248;--s-issue:#ff7a6e;--s-issue-bg:#4a2343}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 var(--f);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1450px;margin:auto;padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+h1{font-size:30px;font-weight:300;letter-spacing:-.015em;line-height:1.1;margin:0;text-wrap:balance}
+.lede{color:var(--mu);margin:6px 0 0;max-width:65ch}
+label{display:block;font-size:12px;color:var(--mu);margin-bottom:4px}
+input,select,textarea{background:var(--field);color:var(--tx);border:1px solid var(--bd);border-radius:4px;padding:0 10px;height:38px;font:inherit;width:100%;font-variant-numeric:tabular-nums;transition:border-color .15s,box-shadow .15s}
+textarea{height:auto;min-height:70px;padding:8px 10px;resize:vertical}
+input:hover,select:hover,textarea:hover{border-color:var(--mu)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--ac);box-shadow:0 0 0 3px var(--soft)}
+button{background:var(--ac);color:#fff;border:1px solid var(--ac);border-radius:4px;height:38px;padding:0 16px;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap;transition:filter .15s,border-color .15s,color .15s}
+button:hover{filter:brightness(1.1)}button:disabled{opacity:.6;cursor:progress}
+button.g{background:var(--card);color:var(--tx);border-color:var(--bd);font-weight:500}button.g:hover{filter:none;border-color:var(--ac);color:var(--ac)}
+button.sm{height:30px;padding:0 10px;font-size:13px}
+button.link{background:none;border:0;color:var(--ac);padding:0;height:auto;font-weight:500}button.link:hover{filter:none;text-decoration:underline}
+button.danger{background:var(--bad);border-color:var(--bad)}
+.msg{font-size:13px;padding:8px 10px;border-radius:4px;margin-top:12px}.msg:empty{display:none}
+.msg.bad{color:var(--bad);background:var(--badbg)}.msg.ok{color:var(--ok);background:var(--okbg)}
+
+/* sign-in and set-password cards */
+.gate{max-width:420px;margin:7vh auto 0;background:var(--card);border:1px solid var(--bd);border-radius:6px;padding:28px;box-shadow:var(--shadow)}
+.gate form{display:grid;gap:14px;margin-top:22px}
+.gate .row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+
+/* app header + toolbar */
+.head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px 24px}
+.who{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--mu)}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:22px 0 14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;flex:1 1 auto;min-width:0}
+.chip{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border:1px solid var(--bd);border-radius:16px;background:var(--card);color:var(--tx);font-weight:500;font-size:13px}
+.chip:hover{filter:none;border-color:var(--ac)}
+.chip i{width:8px;height:8px;border-radius:50%;background:var(--sc,var(--mu))}
+.chip span{color:var(--mu);font-variant-numeric:tabular-nums;font-weight:400}
+.chip[aria-pressed="true"]{background:var(--tx);border-color:var(--tx);color:var(--card)}.chip[aria-pressed="true"] span{color:inherit;opacity:.75}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tools input{width:240px;height:36px}
+
+/* status colours */
+[data-s="Booked"]{--sc:var(--s-booked);--sb:var(--s-booked-bg)}
+[data-s="Departed"]{--sc:var(--s-departed);--sb:var(--s-departed-bg)}
+[data-s="In transit"]{--sc:var(--s-transit);--sb:var(--s-transit-bg)}
+[data-s="Arrived"]{--sc:var(--s-arrived);--sb:var(--s-arrived-bg)}
+[data-s="Customs hold"]{--sc:var(--s-customs);--sb:var(--s-customs-bg)}
+[data-s="Delivered"]{--sc:var(--s-delivered);--sb:var(--s-delivered-bg)}
+[data-s="Issue"]{--sc:var(--s-issue);--sb:var(--s-issue-bg)}
+.st{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:12px;background:var(--sb);color:var(--sc);font-size:12px;font-weight:600;white-space:nowrap}
+.st::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+
+/* table */
+.tablewrap{background:var(--card);border:1px solid var(--bd);border-radius:6px;box-shadow:var(--shadow);overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{text-align:left;font-size:12px;font-weight:500;color:var(--mu);padding:10px 12px;border-bottom:1px solid var(--bd);white-space:nowrap;background:var(--field)}
+td{padding:12px;border-bottom:1px solid var(--bd);vertical-align:top}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:var(--field)}
+td small{display:block;color:var(--mu);font-size:12px;margin-top:2px}
+td strong{font-weight:600}
+.awb{font-size:17px;font-weight:500;letter-spacing:.01em;white-space:nowrap}
+.awb b{color:var(--ac);font-weight:600}
+.warn{color:var(--s-customs)!important}
+.late{color:var(--bad);font-weight:600}
+.route{white-space:nowrap;font-weight:500}
+.acts{display:flex;gap:6px;justify-content:flex-end}
+.empty{padding:48px 20px;text-align:center;color:var(--mu)}
+.empty strong{display:block;color:var(--tx);font-size:16px;font-weight:500;margin-bottom:6px}
+.foot{display:flex;justify-content:space-between;gap:12px;margin-top:10px;font-size:12px;color:var(--mu)}
+.live{display:inline-flex;align-items:center;gap:6px}.live i{width:7px;height:7px;border-radius:50%;background:var(--mu)}.live.on i{background:var(--ok)}
+
+@media(max-width:760px){
+ .tools{width:100%}.tools input{flex:1 1 100%;width:auto}.tools button{flex:1}
+ .tablewrap{background:none;border:0;box-shadow:none;overflow:visible}
+ table,tbody,tr,td{display:block}thead{display:none}
+ tbody tr{background:var(--card);border:1px solid var(--bd);border-left:4px solid var(--sc,var(--bd));border-radius:6px;margin-bottom:10px;padding:6px 0;display:grid;grid-template-columns:1fr 1fr}
+ tbody tr:hover td{background:none}
+ td{border:0;padding:6px 14px;min-width:0}
+ td.c-awb,td.c-act,td.c-cust{grid-column:1/-1}
+ td[data-l]::before{content:attr(data-l);display:block;font-size:11px;color:var(--mu)}
+ .acts{justify-content:flex-start}
+}
+
+/* add / edit dialog */
+dialog{border:1px solid var(--bd);border-radius:8px;padding:0;background:var(--card);color:var(--tx);width:min(720px,calc(100vw - 32px));max-height:calc(100vh - 32px);box-shadow:0 20px 60px rgba(28,28,63,.3)}
+dialog::backdrop{background:rgba(28,28,63,.45)}
+dialog form{display:flex;flex-direction:column;max-height:calc(100vh - 34px)}
+.dh{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid var(--bd)}
+.dh h2{margin:0;font-size:18px;font-weight:500}
+.db{padding:18px 22px;overflow-y:auto;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px}
+.db fieldset{grid-column:1/-1;border:0;padding:0;margin:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px}
+.db legend{font-size:13px;font-weight:600;padding:0;margin-bottom:10px;color:var(--tx)}
+.s2{grid-column:span 2}.s3{grid-column:span 3}.s6{grid-column:1/-1}
+.hintline{font-size:12px;color:var(--mu);margin-top:4px;min-height:17px}
+.df{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 22px;border-top:1px solid var(--bd)}
+.df div{display:flex;gap:8px}
+@media(max-width:560px){.db,.db fieldset{grid-template-columns:repeat(2,minmax(0,1fr))}.s3,.s2{grid-column:span 1}.s6,.wide{grid-column:1/-1}}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tx);color:var(--card);padding:10px 16px;border-radius:4px;font-weight:500;z-index:50}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head><body>
+<nav id="arcaNav" data-current="mawb-tracker"></nav>
+<main class="wrap">
+
+ <section id="auth" hidden>
+  <div class="gate">
+   <h1>MAWB tracker</h1>
+   <p class="lede">Sign in with your Arca staff account to see and add air waybills.</p>
+   <form id="signin" novalidate>
+    <div><label for="em">Work email</label><input id="em" type="email" autocomplete="username" required></div>
+    <div><label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password" required></div>
+    <div class="row"><button type="submit" id="signinBtn">Sign in</button><button type="button" class="link" id="forgot">Forgot password?</button></div>
+   </form>
+   <div class="msg" id="authMsg" role="status"></div>
+   <p class="lede" style="font-size:12px;margin-top:18px">No account yet? Ask an admin to invite you. Invites arrive by email.</p>
+  </div>
+ </section>
+
+ <section id="setpw" hidden>
+  <div class="gate">
+   <h1>Choose your password</h1>
+   <p class="lede">You'll use this with your work email to sign in to the MAWB tracker.</p>
+   <form id="pwForm" novalidate>
+    <div><label for="np1">New password (at least 8 characters)</label><input id="np1" type="password" autocomplete="new-password" minlength="8" required></div>
+    <div><label for="np2">Type it again</label><input id="np2" type="password" autocomplete="new-password" required></div>
+    <div><button type="submit" id="pwBtn">Save password</button></div>
+   </form>
+   <div class="msg" id="pwMsg" role="status"></div>
+  </div>
+ </section>
+
+ <section id="app" hidden>
+  <div class="head">
+   <div><h1>MAWB tracker</h1><p class="lede">Air waybills Arca is moving. Everyone signed in sees the same list, and changes show up for everyone straight away.</p></div>
+   <div class="who"><span id="who"></span><button class="g sm" id="signout">Sign out</button></div>
+  </div>
+  <div class="bar">
+   <div class="chips" id="chips" role="group" aria-label="Filter by status"></div>
+   <div class="tools"><input id="q" type="search" placeholder="Search MAWB, customer, airport…" aria-label="Search shipments"><button class="g" id="csv">Export CSV</button><button id="add">Add MAWB</button></div>
+  </div>
+  <div class="tablewrap">
+   <table>
+    <thead><tr><th>MAWB</th><th>Customer</th><th>Route</th><th>Flight</th><th>ETA</th><th>Cargo</th><th>Status</th><th>Last change</th><th><span hidden>Actions</span></th></tr></thead>
+    <tbody id="rows"></tbody>
+   </table>
+   <div class="empty" id="empty" hidden></div>
+  </div>
+  <div class="foot"><span id="count"></span><span class="live" id="live"><i></i><span>Connecting…</span></span></div>
+ </section>
+</main>
+
+<dialog id="dlg" aria-labelledby="dlgTitle">
+ <form id="f" method="dialog" novalidate>
+  <div class="dh"><h2 id="dlgTitle">Add MAWB</h2><button type="button" class="g sm" id="dlgX">Close</button></div>
+  <div class="db">
+   <div class="s3"><label for="f_mawb">MAWB number</label><input id="f_mawb" inputmode="numeric" placeholder="176-12345675" autocomplete="off" required><div class="hintline" id="mawbHint"></div></div>
+   <div class="s3"><label for="f_airline">Airline</label><input id="f_airline" placeholder="Filled in from the prefix"></div>
+   <div class="s2"><label for="f_status">Status</label><select id="f_status"></select></div>
+   <div class="s2"><label for="f_type">Type</label><select id="f_type"><option>Air cargo</option><option>Courier</option><option>Other</option></select></div>
+   <div class="s2"><label for="f_temp">Temperature</label><select id="f_temp"><option value="">Not set</option><option>+15 to +25°C</option><option>+2 to +8°C</option><option>−20°C</option><option>−80°C (dry ice)</option><option>Cryogenic (LN2)</option><option>Not controlled</option></select></div>
+   <fieldset><legend>Customer</legend>
+    <div class="s3"><label for="f_customer">Customer</label><input id="f_customer"></div>
+    <div class="s3"><label for="f_reference">Arca reference</label><input id="f_reference"></div>
+    <div class="s6"><label for="f_description">Description</label><input id="f_description" placeholder="e.g. Clinical trial samples, 2 shippers"></div>
+   </fieldset>
+   <fieldset><legend>Route and flight</legend>
+    <div class="s2 wide"><label for="f_origin">From (airport)</label><input id="f_origin" maxlength="3" placeholder="LHR" style="text-transform:uppercase"></div>
+    <div class="s2 wide"><label for="f_destination">To (airport)</label><input id="f_destination" maxlength="3" placeholder="JFK" style="text-transform:uppercase"></div>
+    <div class="s2 wide"><label for="f_flight">Flight</label><input id="f_flight" placeholder="EK002" style="text-transform:uppercase"></div>
+    <div class="s3"><label for="f_etd">Departs (ETD)</label><input id="f_etd" type="date"></div>
+    <div class="s3"><label for="f_eta">Arrives (ETA)</label><input id="f_eta" type="date"></div>
+   </fieldset>
+   <fieldset><legend>Cargo</legend>
+    <div class="s3"><label for="f_pieces">Pieces</label><input id="f_pieces" type="number" min="0" step="1"></div>
+    <div class="s3"><label for="f_weight">Weight (kg)</label><input id="f_weight" type="number" min="0" step="any"></div>
+    <div class="s6"><label for="f_notes">Notes</label><textarea id="f_notes"></textarea></div>
+   </fieldset>
+   <div class="s6 msg" id="fMsg" role="alert"></div>
+  </div>
+  <div class="df"><button type="button" class="g" id="del">Delete</button><div><button type="button" class="g" id="cancel">Cancel</button><button type="submit" id="saveBtn">Add MAWB</button></div></div>
+ </form>
+</dialog>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="shared/nav.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<script>
+// Supabase project "arca-tools". The publishable key is meant for browser code; Row Level Security limits all data to signed-in staff.
+const SB_URL='https://zhixjzowrppqzahyziyf.supabase.co',SB_KEY='sb_publishable_w5NDt0YLRlmXtwdUdNflYA_d0wXC-XM';
+const STATUSES=['Booked','Departed','In transit','Arrived','Customs hold','Delivered','Issue'];
+// IATA airline prefixes (first 3 digits of the MAWB). Unknown prefixes can be typed in by hand.
+const AIRLINES={'001':'American Airlines','006':'Delta','014':'Air Canada','016':'United','020':'Lufthansa Cargo','023':'FedEx','047':'TAP Air Portugal','057':'Air France','065':'Saudia','071':'Ethiopian','074':'KLM','075':'Iberia','081':'Qantas','098':'Air India','105':'Finnair','117':'SAS','125':'British Airways','131':'Japan Airlines','157':'Qatar Airways','160':'Cathay Pacific','172':'Cargolux','176':'Emirates','180':'Korean Air','205':'ANA','217':'Thai Airways','235':'Turkish Airlines','297':'China Airlines','406':'UPS','607':'Etihad','618':'Singapore Airlines','724':'Swiss','999':'Air China'};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const digits=s=>String(s||'').replace(/\D/g,'');
+const fmtMawb=d=>d.slice(0,3)+'-'+d.slice(3);
+// MAWB check digit: the 8th serial digit is the first 7 serial digits mod 7
+const checkOk=d=>d.length===11&&(+d.slice(3,10))%7===+d[10];
+const awbHtml=m=>{const d=digits(m);return d.length===11?`<span class="awb"><b>${d.slice(0,3)}</b>-${d.slice(3,7)} ${d.slice(7)}</span>`:`<span class="awb">${esc(m)}</span>`};
+const day=d=>d?new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'';
+const today=()=>new Date().toISOString().slice(0,10);
+const rel=t=>{const s=(Date.now()-new Date(t))/1000;if(s<60)return'just now';if(s<3600)return Math.floor(s/60)+' min ago';if(s<86400)return Math.floor(s/3600)+' h ago';if(s<604800)return Math.floor(s/86400)+' d ago';return new Date(t).toLocaleDateString('en-GB',{day:'numeric',month:'short'})};
+const person=e=>e?e.split('@')[0]:'someone';
+
+const hashInfo=(()=>{const h=new URLSearchParams(location.hash.slice(1));return{type:h.get('type'),err:h.get('error_description')}})();
+let db=null,rows=[],filter='Active',q='',started=false,needPw=hashInfo.type==='invite'||hashInfo.type==='recovery',editing=null,chan=null,reloadT=null;
+
+function show(which){['auth','setpw','app'].forEach(id=>$(id).hidden=id!==which)}
+function say(el,text,ok){el.textContent=text||'';el.className='msg '+(ok?'ok':'bad')}
+function toast(t){const e=$('toast');e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,2600)}
+
+async function boot(){
+ if(!window.supabase){show('auth');say($('authMsg'),'The sign-in service did not load. Check your internet connection, then reload the page.');$('signinBtn').disabled=true;return}
+ db=supabase.createClient(SB_URL,SB_KEY);
+ if(hashInfo.err)say($('authMsg'),hashInfo.err.replace(/\+/g,' ')+'. Ask an admin for a new invite, or use "Forgot password?".');
+ db.auth.onAuthStateChange((ev,session)=>{if(ev==='PASSWORD_RECOVERY')needPw=true;setTimeout(()=>route(session),0)});
+ const {data:{session}}=await db.auth.getSession();route(session);
+}
+function route(session){
+ if(!session){show('auth');stop();return}
+ if(needPw){show('setpw');$('np1').focus();return}
+ show('app');$('who').textContent=session.user.email;
+ if(!started){started=true;load();listen()}
+}
+function stop(){started=false;rows=[];if(chan){db.removeChannel(chan);chan=null}}
+
+// sign in / password
+$('signin').onsubmit=async e=>{e.preventDefault();const em=$('em').value.trim(),pw=$('pw').value;
+ if(!em||!pw)return say($('authMsg'),'Enter your work email and password.');
+ $('signinBtn').disabled=true;const {error}=await db.auth.signInWithPassword({email:em,password:pw});$('signinBtn').disabled=false;
+ if(error)say($('authMsg'),/invalid login/i.test(error.message)?'That email and password don\'t match. Check them, or use "Forgot password?".':error.message);else $('pw').value=''};
+$('forgot').onclick=async()=>{const em=$('em').value.trim();if(!em)return say($('authMsg'),'Type your work email above first, then press "Forgot password?" again.');
+ const {error}=await db.auth.resetPasswordForEmail(em);say($('authMsg'),error?error.message:'If '+em+' has an account, a link to set a new password is on its way. Check your inbox.',!error)};
+$('pwForm').onsubmit=async e=>{e.preventDefault();const a=$('np1').value,b=$('np2').value;
+ if(a.length<8)return say($('pwMsg'),'Use at least 8 characters.');if(a!==b)return say($('pwMsg'),'The two passwords don\'t match.');
+ $('pwBtn').disabled=true;const {error}=await db.auth.updateUser({password:a});$('pwBtn').disabled=false;
+ if(error)return say($('pwMsg'),error.message);
+ needPw=false;history.replaceState(null,'',location.pathname);toast('Password saved');const {data:{session}}=await db.auth.getSession();route(session)};
+$('signout').onclick=async()=>{await db.auth.signOut()};
+
+// data
+async function load(){
+ const {data,error}=await db.from('shipments').select('*').order('updated_at',{ascending:false}).limit(2000);
+ if(error){rows=[];render();$('empty').hidden=false;$('empty').innerHTML='<strong>Couldn\'t load shipments</strong>'+esc(error.message)+'. Reload the page to try again.';return}
+ rows=data;render();
+}
+function listen(){
+ chan=db.channel('shipments-live').on('postgres_changes',{event:'*',schema:'public',table:'shipments'},()=>{clearTimeout(reloadT);reloadT=setTimeout(load,250)})
+  .subscribe(s=>{const on=s==='SUBSCRIBED';$('live').className='live'+(on?' on':'');$('live').lastElementChild.textContent=on?'Live: updates appear automatically':'Not live: reload to see colleagues\' changes'});
+}
+
+function render(){
+ const cnt={Active:0,All:rows.length};STATUSES.forEach(s=>cnt[s]=0);rows.forEach(r=>{cnt[r.status]=(cnt[r.status]||0)+1;if(r.status!=='Delivered')cnt.Active++});
+ $('chips').innerHTML=['Active',...STATUSES,'All'].filter(k=>k==='Active'||k==='All'||cnt[k]).map(k=>`<button type="button" class="chip" ${STATUSES.includes(k)?`data-s="${k}"`:''} aria-pressed="${filter===k}" data-f="${k}">${STATUSES.includes(k)?'<i></i>':''}${k}<span>${cnt[k]}</span></button>`).join('');
+ $('chips').querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{filter=b.dataset.f;render()});
+ const needle=q.toLowerCase(),nd=digits(q);
+ const list=rows.filter(r=>filter==='All'||(filter==='Active'?r.status!=='Delivered':r.status===filter))
+  .filter(r=>!needle||(nd.length>=3&&digits(r.mawb).includes(nd))||[r.mawb,r.airline,r.customer,r.reference,r.description,r.origin,r.destination,r.flight,r.notes].some(v=>v&&String(v).toLowerCase().includes(needle)))
+  .sort((a,b)=>(a.status==='Delivered')-(b.status==='Delivered')||(a.eta||'9999').localeCompare(b.eta||'9999')||String(b.updated_at).localeCompare(String(a.updated_at)));
+ const t=today();
+ $('rows').innerHTML=list.map(r=>{const d=digits(r.mawb),late=r.eta&&r.eta<t&&!['Arrived','Delivered'].includes(r.status);
+  const cargo=[r.pieces!=null?r.pieces+' pcs':'',r.weight_kg!=null?(+r.weight_kg).toLocaleString('en-GB')+' kg':''].filter(Boolean).join(' · ');
+  return `<tr data-s="${esc(r.status)}">
+<td class="c-awb">${awbHtml(r.mawb)}<small>${esc(r.airline||'Airline not set')}</small>${d.length===11&&!checkOk(d)?'<small class="warn">Check digit doesn\'t match. Check the number.</small>':''}</td>
+<td class="c-cust"><strong>${esc(r.customer||'')}</strong>${r.reference?`<small>${esc(r.reference)}</small>`:''}${r.description?`<small>${esc(r.description)}</small>`:''}${!r.customer&&!r.reference&&!r.description?'<small>No customer yet</small>':''}</td>
+<td data-l="Route"><span class="route">${esc(r.origin||'?')} → ${esc(r.destination||'?')}</span></td>
+<td data-l="Flight">${esc(r.flight||'')}${r.etd?`<small>Departs ${day(r.etd)}</small>`:''}${!r.flight&&!r.etd?'<small>Not set</small>':''}</td>
+<td data-l="ETA">${r.eta?`<span class="${late?'late':''}">${day(r.eta)}</span>${late?'<small class="late">Past ETA</small>':''}`:'<small>Not set</small>'}</td>
+<td data-l="Cargo">${esc(r.temperature||'')}${cargo?`<small>${cargo}</small>`:''}${!r.temperature&&!cargo?'<small>Not set</small>':''}</td>
+<td data-l="Status"><span class="st" data-s="${esc(r.status)}">${esc(r.status)}</span></td>
+<td data-l="Last change"><small style="margin:0">${rel(r.updated_at)} by ${esc(person(r.updated_by_email||r.created_by_email))}</small></td>
+<td class="c-act"><div class="acts"><button type="button" class="g sm" data-track="${esc(r.mawb)}">Track</button><button type="button" class="g sm" data-edit="${esc(r.id)}">Edit</button></div></td></tr>`}).join('');
+ $('rows').querySelectorAll('[data-track]').forEach(b=>b.onclick=()=>track(b.dataset.track));
+ $('rows').querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openForm(rows.find(r=>r.id===b.dataset.edit)));
+ const em=$('empty');em.hidden=list.length>0;
+ if(!list.length)em.innerHTML=!rows.length?'<strong>No air waybills yet</strong>Press "Add MAWB" to add the first one. Everyone signed in will see it.':'<strong>Nothing matches</strong>Try another search or pick "All" above.';
+ $('count').textContent=`Showing ${list.length} of ${rows.length} MAWB${rows.length===1?'':'s'}`;
+}
+$('q').oninput=e=>{q=e.target.value.trim();render()};
+
+// track-trace only takes the number as a form post, so send one in a new tab
+function track(m){const f=document.createElement('form');f.method='post';f.action='https://www.track-trace.com/aircargo';f.target='_blank';
+ [['number',m],['config','207500'],['commit','Track direct']].forEach(([n,v])=>{const i=document.createElement('input');i.type='hidden';i.name=n;i.value=v;f.appendChild(i)});
+ document.body.appendChild(f);f.submit();f.remove()}
+
+// add / edit
+const F=['mawb','airline','status','type','temp:temperature','customer','reference','description','origin','destination','flight','etd','eta','pieces','weight:weight_kg','notes'].map(s=>{const [id,col]=s.split(':');return{id:'f_'+id,col:col||id}});
+$('f_status').innerHTML=STATUSES.map(s=>`<option>${s}</option>`).join('');
+function mawbHint(){const d=digits($('f_mawb').value),h=$('mawbHint');
+ if(!d){h.textContent='';h.className='hintline';return}
+ if(d.length!==11){h.textContent=d.length+' of 11 digits';h.className='hintline';return}
+ const al=AIRLINES[d.slice(0,3)];if(al&&!$('f_airline').dataset.touched)$('f_airline').value=al;
+ h.textContent=fmtMawb(d)+(checkOk(d)?' · check digit OK':' · check digit doesn\'t match, so check the number');h.className='hintline'+(checkOk(d)?'':' warn')}
+$('f_mawb').oninput=mawbHint;$('f_airline').oninput=e=>e.target.dataset.touched=e.target.value?'1':'';
+function openForm(r){editing=r||null;$('f').reset();delete $('f_airline').dataset.touched;say($('fMsg'),'');
+ F.forEach(({id,col})=>{if(r&&r[col]!=null)$(id).value=r[col]});if(r&&r.airline)$('f_airline').dataset.touched='1';
+ $('dlgTitle').textContent=r?'Edit '+r.mawb:'Add MAWB';$('saveBtn').textContent=r?'Save changes':'Add MAWB';
+ $('del').hidden=!r;$('del').textContent='Delete';$('del').className='g';delete $('del').dataset.armed;mawbHint();$('dlg').showModal();$(r?'f_status':'f_mawb').focus()}
+$('add').onclick=()=>openForm(null);
+$('dlgX').onclick=$('cancel').onclick=()=>$('dlg').close();
+$('f').onsubmit=async e=>{e.preventDefault();const d=digits($('f_mawb').value);
+ if(d.length!==11)return say($('fMsg'),'Enter the 11-digit MAWB number, for example 176-12345675.');
+ const rec={};F.forEach(({id,col})=>{const v=$(id).value.trim();rec[col]=v===''?null:v});
+ rec.mawb=fmtMawb(d);rec.airline=rec.airline||AIRLINES[d.slice(0,3)]||null;rec.status=rec.status||'Booked';rec.type=rec.type||'Air cargo';
+ ['origin','destination','flight'].forEach(k=>rec[k]=rec[k]&&rec[k].toUpperCase());rec.pieces=rec.pieces==null?null:parseInt(rec.pieces,10);rec.weight_kg=rec.weight_kg==null?null:+rec.weight_kg;
+ $('saveBtn').disabled=true;const res=editing?await db.from('shipments').update(rec).eq('id',editing.id):await db.from('shipments').insert(rec);$('saveBtn').disabled=false;
+ if(res.error)return say($('fMsg'),res.error.code==='23505'?rec.mawb+' is already on the list. Search for it and press Edit instead.':'Couldn\'t save: '+res.error.message);
+ $('dlg').close();toast(editing?'Changes saved':rec.mawb+' added');load()};
+$('del').onclick=async()=>{const b=$('del');if(!b.dataset.armed){b.dataset.armed='1';b.textContent='Confirm delete';b.className='danger';return}
+ b.disabled=true;const {error}=await db.from('shipments').delete().eq('id',editing.id);b.disabled=false;
+ if(error)return say($('fMsg'),'Couldn\'t delete: '+error.message);$('dlg').close();toast(editing.mawb+' deleted');load()};
+
+// CSV export of what is shown in the list
+$('csv').onclick=()=>{const cols=['mawb','airline','type','status','customer','reference','description','origin','destination','flight','etd','eta','temperature','pieces','weight_kg','notes','created_by_email','created_at','updated_by_email','updated_at'];
+ const cell=v=>{v=v==null?'':String(v);return/[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+ const csv=[cols.join(','),...rows.map(r=>cols.map(c=>cell(r[c])).join(','))].join('\r\n');
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv'}));a.download='arca-mawbs-'+today()+'.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)};
+
+boot();
+</script></body></html>
