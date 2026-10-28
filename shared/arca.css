@@ -1,0 +1,25 @@
+/* Arca shared styles: brand tokens + site nav. Layout: full-width sticky top bar, content centred at 1450px. */
+:root{
+ --bg:#E9F0EF;--card:#fff;--field:#f4f7f6;--tx:#1C1C3F;--mu:#5d6081;--bd:#cdd7d6;--ac:#0E34FF;--soft:#e3e8ff;
+ --ok:#12805e;--okbg:#e2f3ec;--bad:#c4281c;--badbg:#fce9e7;
+ --shadow:0 1px 2px rgba(28,28,63,.05),0 6px 16px rgba(28,28,63,.05);
+ --f:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+ --navh:56px;
+}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1C1C3F;--card:#26265a;--field:#20204e;--tx:#EEF2F1;--mu:#a6aad4;--bd:#3d3d78;--ac:#5b74ff;--soft:#30348a;--ok:#4fd1a1;--okbg:#1d4248;--bad:#ff7a6e;--badbg:#4a2343;--shadow:none;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1C1C3F;--card:#26265a;--field:#20204e;--tx:#EEF2F1;--mu:#a6aad4;--bd:#3d3d78;--ac:#5b74ff;--soft:#30348a;--ok:#4fd1a1;--okbg:#1d4248;--bad:#ff7a6e;--badbg:#4a2343;--shadow:none;color-scheme:dark}
+
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:31;background:var(--card)}
+.anav{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--card);border-bottom:1px solid var(--bd);font-family:var(--f)}
+.anav-in{max-width:1450px;margin:auto;height:var(--navh);display:flex;align-items:stretch;gap:28px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.anav-brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--tx);flex-shrink:0}
+.anav-word{position:relative;font-size:26px;font-weight:300;letter-spacing:-.02em;line-height:1;padding-right:11px}
+.anav-word::after{content:"";position:absolute;right:0;top:1px;width:8px;height:8px;background:linear-gradient(var(--ac) 0 28%,transparent 28% 40%,var(--ac) 40%)}
+.anav-sub{font-size:12px;font-weight:400;color:var(--ac);padding-left:12px;border-left:1px solid var(--bd);line-height:1.6}
+.anav-l{display:flex;gap:4px;min-width:0;overflow-x:auto;scrollbar-width:none}
+.anav-l::-webkit-scrollbar{display:none}
+.anav-l a{display:flex;align-items:center;padding:0 12px;color:var(--mu);text-decoration:none;font-size:14px;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s}
+.anav-l a:hover{color:var(--tx)}
+.anav-l a[aria-current="page"]{color:var(--tx);font-weight:500;border-bottom-color:var(--ac)}
+@media(max-width:560px){.anav-in{gap:14px}.anav-sub{display:none}}
+@media(prefers-reduced-motion:reduce){.anav-l a{transition:none}}
