@@ -67,8 +67,8 @@ button.g{background:var(--card);color:var(--tx);border-color:var(--bd)}button.g:
 
  <div id="pk">
   <h2>Shipment</h2>
-  <div class="g3" style="grid-template-columns:1fr 1fr"><div><label>Ship from</label><select id="region"><option value="UK">UK</option><option value="US">USA (export)</option></select></div><div><label>Include pallet shippers</label><select id="pal"><option value="yes">Yes</option><option value="no">No</option></select></div></div>
-  <div class="note">USA export uses Mercury (CCT Advanced SU) boxes only. Pallet shippers = Tower KT400D, Peli Half Stack and Peli Full Stack.</div>
+  <div class="g3" style="grid-template-columns:1fr 1fr"><div><label>Ship from</label><select id="region"><option value="UK">UK</option><option value="US">USA (export)</option><option value="DE">Germany (DE)</option></select></div><div><label>Include pallet shippers</label><select id="pal"><option value="yes">Yes</option><option value="no">No</option></select></div></div>
+  <div class="note">UK uses every box except Mercury and ISOGO. USA export uses Mercury (CCT Advanced SU) only. Germany (DE) uses ISOGO only (no −80°C option). Pallet shippers = all Tower and Peli boxes (UK only).</div>
   <h2>Product to pack (<span class="u">mm</span> / kg)</h2><div id="items"></div>
   <button class="g" id="add">+ Add product</button>
   <h2>Door placement</h2><select id="doorPk"><option value="left">Left</option><option value="top" selected>Top</option><option value="none">None</option></select>
@@ -151,7 +151,16 @@ const DEF2=[
  ['cd1','CCT Advanced SU Small (DI)',[348,348,322],[149,149,110],12.7,2.8,'dry',['-80']],
  ['cd2','CCT Advanced SU Medium (DI)',[551,348,348],[352,149,136],21.2,9,'dry',['-80']],
  ['cd3','CCT Advanced SU Large (DI)',[549,549,356],[360,360,140],32,18,'dry',['-80']],
- ['cd4','CCT Advanced SU XL (DI)',[549,549,533],[349,349,300],44,41,'dry',['-80']]];
+ ['cd4','CCT Advanced SU XL (DI)',[549,549,533],[349,349,300],44,41,'dry',['-80']],
+ // Emball'iso ISOGO (emballiso.com/produit/isogo): system weight differs for frozen, so cool/ambient and frozen are separate entries
+ ['ig8','ISOGO 8 (CRT/RFG)',[405,405,415],[202,202,198],9,8,'cube',['+20','+4']],
+ ['ig8f','ISOGO 8 (FRZ)',[405,405,415],[202,202,198],11.6,8,'cube',['-20']],
+ ['ig14','ISOGO 14 (CRT/RFG)',[450,450,460],[242,242,238],12.1,14,'cube',['+20','+4']],
+ ['ig14f','ISOGO 14 (FRZ)',[450,450,460],[242,242,238],15.6,14,'cube',['-20']],
+ ['ig30','ISOGO 30 (CRT/RFG)',[510,510,520],[312,312,308],15.4,30,'cube',['+20','+4']],
+ ['ig30f','ISOGO 30 (FRZ)',[510,510,520],[312,312,308],20.1,30,'cube',['-20']],
+ ['ig60','ISOGO 60 (CRT/RFG)',[600,600,610],[395,395,389],25.5,60,'cube',['+20','+4']],
+ ['ig60f','ISOGO 60 (FRZ)',[600,600,610],[395,395,389],34.1,60,'cube',['-20']]];
 let PACKS=DEF2.map(a=>({id:a[0],n:a[1],ext:[...a[2]],use:[...a[3]],tare:a[4],vol:a[5],sys:a[6],mx:null,ts0:a[7]}));const NM={s5:'Single Use Dry Ice 5 Litre',s9:'Single Use Dry Ice 9 Litre',s30:'Single Use Dry Ice 30 Litre',r17:'Reusable Dry Ice 17 Litre',r35:'Reusable Dry Ice 35 Litre',s54:'Single Use Dry Ice 54 Litre',c12:'Credo (AMB, RFD & FRZ) 12 Litre',c28:'Credo (AMB, RFD & FRZ) 28 Litre',c56:'Credo (AMB, RFD & FRZ) 56 Litre',c96:'Credo (AMB, RFD & FRZ) 96 Litre'};PACKS.forEach(p=>p.n=NM[p.id]||p.n);
 {const m=new Map(),out=[],O=['+20','+4','-20','-80'];PACKS.forEach(p=>{const b=p.n.replace(/ [+-]\d+°C$/,''),t=p.ts0?p.ts0:/Cr.do/.test(p.n)?['+20','+4','-20']:[(p.n.match(/([+-]\d+)°C$/)||[0,'-80'])[1]];let e=m.get(b);if(!e){e=p;e.n=b;e.ts=[];m.set(b,e);out.push(e)}else{e.tare=Math.max(e.tare,p.tare);e.use=e.use.map((v,i)=>Math.min(v,p.use[i]))}t.forEach(x=>{if(!e.ts.includes(x))e.ts.push(x)})});PACKS.length=0;out.forEach(p=>{p.ts.sort((a,b)=>O.indexOf(a)-O.indexOf(b));PACKS.push(p)})}
 const PRESET=JSON.parse(JSON.stringify(PACKS));
@@ -166,12 +175,14 @@ let unit='cm';const dv=v=>unit==='cm'?+(v/10).toFixed(2):v,toMM=v=>unit==='cm'?v
 const COL=['#0E34FF','#7B8FFF','#00A38C','#5E00CC','#F5A524','#E5484D','#2DB67D','#A06BFF','#00B8D9','#FF7A59','#3B4A9E','#9BB0FF','#6B7280'];
 let mode=1,cargo=[{n:'Sample box',l:140,w:100,h:50,kg:.4,q:12,up:true,st:true,b:'auto'}],rows=[],R=null,region='UK',palOK=true;
 const pk=id=>PACKS.find(p=>p.id===id);
-// Mercury = CCT Advanced SU (the only boxes for USA export); pallet shippers = KT400D and the Peli stacks
-const isMerc=p=>/^CCT/.test(p.n),isPal=p=>/^(Tower KT400D|Peli)/.test(p.n),avail=p=>(region!=='US'||isMerc(p))&&(palOK||!isPal(p));
+// Mercury = CCT Advanced SU: USA export uses only these. DE uses only ISOGO. UK uses everything else. Pallet shippers = every Tower and Peli box (UK only).
+const isMerc=p=>/^CCT/.test(p.n),isIsogo=p=>/^ISOGO/.test(p.n),isPal=p=>/^(Tower|Peli)/.test(p.n),
+ avail=p=>region==='US'?isMerc(p):region==='DE'?isIsogo(p):!isMerc(p)&&!isIsogo(p)&&(palOK||!isPal(p)),
+ regionName=()=>({US:'USA (export)',DE:'Germany (DE)'})[region]||'UK';
 
 
 Object.keys(VEH).forEach(k=>$('veh').add(new Option(k,k)));
-const pn=p=>p.n,GRP=[['Credo',p=>p.n.startsWith('Credo')],['Single use dry ice',p=>p.n.startsWith('Single')],['Reusable dry ice',p=>p.n.startsWith('Reusable')],['Tower & Peli',p=>/^(Tower|Peli)/.test(p.n)],['Mercury (CCT Advanced SU)',isMerc]],tmp=p=>p.ts||[],boxOpts=(s,tp)=>(`<option value="auto" ${!s||s==='auto'||String(s).slice(0,2)==='a:'?'selected':''}>Auto – smallest that fits</option>`+GRP.map(([t,k])=>`<optgroup label="${t}">${[...new Set(PACKS.filter(p=>k(p)&&avail(p)&&p.ts.includes(tp||'+4')).map(base))].map(b=>{const p=PACKS.find(q=>base(q)===b);return `<option value="${p.id}" ${s&&pk(s)&&base(pk(s))===b?'selected':''}>${b}</option>`}).join('')}</optgroup>`).join('')).replace(/<optgroup label="[^"]*"><\/optgroup>/g,'');
+const pn=p=>p.n,GRP=[['Credo',p=>p.n.startsWith('Credo')],['Single use dry ice',p=>p.n.startsWith('Single')],['Reusable dry ice',p=>p.n.startsWith('Reusable')],['Tower & Peli',p=>/^(Tower|Peli)/.test(p.n)],['Mercury (CCT Advanced SU)',isMerc],['ISOGO (Emball\'iso)',isIsogo]],tmp=p=>p.ts||[],boxOpts=(s,tp)=>(`<option value="auto" ${!s||s==='auto'||String(s).slice(0,2)==='a:'?'selected':''}>Auto – smallest that fits</option>`+GRP.map(([t,k])=>`<optgroup label="${t}">${[...new Set(PACKS.filter(p=>k(p)&&avail(p)&&p.ts.includes(tp||'+4')).map(base))].map(b=>{const p=PACKS.find(q=>base(q)===b);return `<option value="${p.id}" ${s&&pk(s)&&base(pk(s))===b?'selected':''}>${b}</option>`}).join('')}</optgroup>`).join('')).replace(/<optgroup label="[^"]*"><\/optgroup>/g,'');
 const TP=['+20','+4','-20','-80'],TL={'+20':'+20°C (ambient)','+4':'+4°C (refrigerated)','-20':'-20°C (frozen)','-80':'-80°C (dry ice)'},
  base=p=>p.n.replace(/ [+-]\d+°C$/,''),
  temps=p=>TP.filter(t=>PACKS.some(q=>base(q)===base(p)&&tmp(q).includes(t))),
@@ -192,7 +203,7 @@ function items(){$('items').innerHTML=cargo.map((c,i)=>`<div class="item" style=
 $('add').onclick=()=>{cargo.push({n:'Item '+(cargo.length+1),l:100,w:100,h:50,kg:.5,q:6,up:false,st:true,b:'auto',shape:'box'});items()};items();
 // region / pallet switches: a chosen box that is no longer allowed falls back to Auto
 function boxRules(){cargo.forEach(c=>{const q=c.b&&c.b!=='auto'?pk(c.b):null;if(q&&!avail(q))c.b='auto'});items();if(mode===1)calcPk()}
-$('region').onchange=e=>{region=e.target.value;boxRules()};$('pal').onchange=e=>{palOK=e.target.value==='yes';boxRules()};
+$('region').onchange=e=>{region=e.target.value;$('pal').disabled=region!=='UK';boxRules()};$('pal').onchange=e=>{palOK=e.target.value==='yes';boxRules()};
 
 function specs(p){p=p||pk(specId)||PACKS[0];if(!p){$('spec').innerHTML='<div class="note">Choose a packaging or press Optimise to see its specs.</div>';return}
  const f=[['Ext L',p.ext,0],['Ext W',p.ext,1],['Ext H',p.ext,2],['Use L',p.use,0],['Use W',p.use,1],['Use H',p.use,2]];
@@ -284,7 +295,8 @@ function failPanel(list,S,left){const e=s=>String(s).replace(/[&<>"]/g,ch=>({'&'
  const g={};left.forEach(it=>(g[it.t]=g[it.t]||[]).push(it));
  Object.entries(g).forEach(([t,its])=>{const c=cargo[t],it=its[0],s1=sel(c),p=s1.p,at=s1.at,cands=p?[p]:PACKS.filter(q=>tmp(q).includes(at)&&avail(q)),sd=[it.l,it.w,it.h].sort((a,b)=>a-b);
   const fits=q=>{const u=[...q.use].sort((a,b)=>a-b);return it.up?(it.h<=q.use[2]&&((it.l<=q.use[0]&&it.w<=q.use[1])||(it.w<=q.use[0]&&it.l<=q.use[1]))):sd.every((v,i)=>v<=u[i])};
-  let why;if(!cands.some(fits))why=p?'Product dimensions exceed the usable internal dimensions of the selected container.':'Product dimensions exceed the usable internal dimensions of every available '+at+'°C container'+(region==='US'?' for USA export':'')+(palOK?'':' (pallet shippers excluded)')+'.';
+  let why;if(!cands.length)why='No '+at+'°C container is available'+(region!=='UK'?' for '+regionName():'')+(palOK?'':' with pallet shippers excluded')+'.';
+  else if(!cands.some(fits))why=p?'Product dimensions exceed the usable internal dimensions of the selected container.':'Product dimensions exceed the usable internal dimensions of every available '+at+'°C container'+(region!=='UK'?' for '+regionName():'')+(palOK?'':' (pallet shippers excluded)')+'.';
   else if(cands.every(q=>q.mx!=null&&it.kg>q.mx))why='Product weight exceeds the maximum payload of the selected container.';
   else why='Container limit reached or stacking rules prevented placement.';
   h+=`<div class="fail"><b>${e(c.n)} — ${its.length} unit${its.length>1?'s':''}</b><br>${it.shape==='cyl'?'Ø'+dv(it.l)+' × '+dv(it.h):dv(it.l)+' × '+dv(it.w)+' × '+dv(it.h)} ${unit}<br>Selected: ${p?e(p.n):'Auto – smallest that fits'}<br>Temperature: ${at}°C<br>Reason: ${why}</div>`});
@@ -347,7 +359,7 @@ async function makePDF(kind){
   if(kind!=='vh'){
   head();H2('Summary');
   [D.stat[0],D.stat[3]].forEach(([l,v])=>P(l+': '+v));
-  P('Ship from: '+(region==='US'?'USA (export)':'UK')+'   |   Pallet shippers: '+(palOK?'Yes':'No'),9,GR);
+  P('Ship from: '+regionName()+'   |   Pallet shippers: '+(palOK?'Yes':'No'),9,GR);
   P(D.pkMsg,9.5);
   const tmp=document.createElement('div');tmp.innerHTML=D.pkRes;const sl=tmp.querySelector('.sumline');if(sl)P(sl.textContent,9,GR);
   H2('Products');

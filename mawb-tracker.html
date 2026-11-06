@@ -99,6 +99,30 @@ td strong{font-weight:600}
  .acts{justify-content:flex-start}
 }
 
+/* row drop-down: route card + airline event timeline */
+tr.main{cursor:pointer}
+tr.main.is-open td{background:var(--field);border-bottom-color:transparent}
+tr.exp>td{padding:0 12px 14px;background:var(--field)}
+.det{background:var(--card);border:1px solid var(--bd);border-radius:6px;overflow:hidden}
+.dflags{display:flex;flex-wrap:wrap;gap:6px;padding:12px 16px 0}.dflags:empty{display:none}
+.flag{font-size:12px;font-weight:600;color:var(--bad);background:var(--badbg);border-radius:4px;padding:2px 8px}.flag.w{color:var(--s-customs);background:var(--s-customs-bg)}
+.route{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:18px;align-items:center;padding:20px 18px}
+.ap b{display:block;font-size:36px;font-weight:300;letter-spacing:.02em;line-height:1}.ap small{display:block;color:var(--mu);margin-top:4px;font-size:12px}.ap.r{text-align:right}
+.pbar{position:relative;height:6px;background:var(--bd);border-radius:3px}
+.pbar i{position:absolute;inset:0 auto 0 0;background:var(--ac);border-radius:3px}
+.pbar span{position:absolute;top:12px;font-size:12px;font-weight:600;color:var(--ac);transform:translateX(-50%);white-space:nowrap}
+.pbar em{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-style:normal;font-size:12px;color:var(--mu);white-space:nowrap}
+.tlwrap{overflow-x:auto;border-top:1px solid var(--bd)}
+.tl{width:100%;min-width:640px;border-collapse:collapse}
+.tl th{background:none;padding:8px 12px}.tl td{padding:8px 12px;vertical-align:middle;border-bottom:1px solid var(--bd)}
+.tl tr:last-child td{border-bottom:0}.tl tr.cur td{background:var(--soft)}
+.tl .code{font-weight:600}.tl .code small{font-weight:400}
+.tl input{height:32px;font-size:13px;padding:0 6px;min-width:0}.tl .loc{width:64px;text-transform:uppercase}.tl .fl{width:84px;text-transform:uppercase}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;border:2px solid var(--bd);vertical-align:middle}.dot.done{background:var(--ok);border-color:var(--ok)}
+.was{display:block;font-size:12px;color:var(--bad);margin-top:2px}
+.dfoot{padding:10px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--bd)}
+@media(max-width:760px){tr.exp{display:block;margin:-8px 0 10px}tr.exp>td{display:block;padding:0}.ap b{font-size:28px}.route{gap:12px;padding:16px 14px}}
+
 /* add / edit dialog */
 dialog{border:1px solid var(--bd);border-radius:8px;padding:0;background:var(--card);color:var(--tx);width:min(720px,calc(100vw - 32px));max-height:calc(100vh - 32px);box-shadow:0 20px 60px rgba(28,28,63,.3)}
 dialog::backdrop{background:rgba(28,28,63,.45)}
@@ -157,7 +181,7 @@ dialog form{display:flex;flex-direction:column;max-height:calc(100vh - 34px)}
   </div>
   <div class="tablewrap">
    <table>
-    <thead><tr><th>MAWB</th><th>Customer</th><th>Route</th><th>Flight</th><th>ETA</th><th>Cargo</th><th>Status</th><th>Last change</th><th><span hidden>Actions</span></th></tr></thead>
+    <thead><tr><th>MAWB</th><th>Customer</th><th>Route</th><th>Flight</th><th>ETA</th><th>Temperature</th><th>Status</th><th>Last change</th><th><span hidden>Actions</span></th></tr></thead>
     <tbody id="rows"></tbody>
    </table>
    <div class="empty" id="empty" hidden></div>
@@ -187,11 +211,7 @@ dialog form{display:flex;flex-direction:column;max-height:calc(100vh - 34px)}
     <div class="s3"><label for="f_etd">Departs (ETD)</label><input id="f_etd" type="date"></div>
     <div class="s3"><label for="f_eta">Arrives (ETA)</label><input id="f_eta" type="date"></div>
    </fieldset>
-   <fieldset><legend>Cargo</legend>
-    <div class="s3"><label for="f_pieces">Pieces</label><input id="f_pieces" type="number" min="0" step="1"></div>
-    <div class="s3"><label for="f_weight">Weight (kg)</label><input id="f_weight" type="number" min="0" step="any"></div>
-    <div class="s6"><label for="f_notes">Notes</label><textarea id="f_notes"></textarea></div>
-   </fieldset>
+   <div class="s6"><label for="f_notes">Notes</label><textarea id="f_notes"></textarea></div>
    <div class="s6 msg" id="fMsg" role="alert"></div>
   </div>
   <div class="df"><button type="button" class="g" id="del">Delete</button><div><button type="button" class="g" id="cancel">Cancel</button><button type="submit" id="saveBtn">Add MAWB</button></div></div>
@@ -206,7 +226,7 @@ dialog form{display:flex;flex-direction:column;max-height:calc(100vh - 34px)}
 const SB_URL='https://zhixjzowrppqzahyziyf.supabase.co',SB_KEY='sb_publishable_w5NDt0YLRlmXtwdUdNflYA_d0wXC-XM';
 const STATUSES=['Booked','Departed','In transit','Arrived','Customs hold','Delivered','Issue'];
 // IATA airline prefixes (first 3 digits of the MAWB). Unknown prefixes can be typed in by hand.
-const AIRLINES={'001':'American Airlines','006':'Delta','014':'Air Canada','016':'United','020':'Lufthansa Cargo','023':'FedEx','047':'TAP Air Portugal','057':'Air France','065':'Saudia','071':'Ethiopian','074':'KLM','075':'Iberia','081':'Qantas','098':'Air India','105':'Finnair','117':'SAS','125':'British Airways','131':'Japan Airlines','157':'Qatar Airways','160':'Cathay Pacific','172':'Cargolux','176':'Emirates','180':'Korean Air','205':'ANA','217':'Thai Airways','235':'Turkish Airlines','297':'China Airlines','406':'UPS','607':'Etihad','618':'Singapore Airlines','724':'Swiss','999':'Air China'};
+const AIRLINES={'001':'American Airlines','006':'Delta','014':'Air Canada','016':'United','020':'Lufthansa Cargo','023':'FedEx','047':'TAP Air Portugal','057':'Air France','065':'Saudia','071':'Ethiopian','074':'KLM','075':'Iberia','081':'Qantas','098':'Air India','105':'Finnair','117':'SAS','125':'British Airways','131':'Japan Airlines','157':'Qatar Airways','160':'Cathay Pacific','172':'Cargolux','176':'Emirates','180':'Korean Air','205':'ANA','217':'Thai Airways','235':'Turkish Airlines','297':'China Airlines','406':'UPS','607':'Etihad','618':'Singapore Airlines','706':'Kenya Airways','724':'Swiss','999':'Air China'};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const digits=s=>String(s||'').replace(/\D/g,'');
@@ -219,8 +239,56 @@ const today=()=>new Date().toISOString().slice(0,10);
 const rel=t=>{const s=(Date.now()-new Date(t))/1000;if(s<60)return'just now';if(s<3600)return Math.floor(s/60)+' min ago';if(s<86400)return Math.floor(s/3600)+' h ago';if(s<604800)return Math.floor(s/86400)+' d ago';return new Date(t).toLocaleDateString('en-GB',{day:'numeric',month:'short'})};
 const person=e=>e?e.split('@')[0]:'someone';
 
+// Airline cargo events (IATA status codes) in journey order, as ShipsGo and the airlines show them
+const EV=[['RCS','Received from shipper'],['MAN','Manifested on flight'],['DEP','Departed'],['ARR','Arrived'],['RCF','Received from flight'],['DLV','Delivered']];
+const AIRPORTS={LHR:'London Heathrow',LGW:'London Gatwick',STN:'London Stansted',MAN:'Manchester',EMA:'East Midlands',FRA:'Frankfurt',AMS:'Amsterdam',CDG:'Paris CDG',BRU:'Brussels',ZRH:'Zurich',IST:'Istanbul',DXB:'Dubai',DOH:'Doha',AUH:'Abu Dhabi',NBO:'Nairobi',JNB:'Johannesburg',JFK:'New York JFK',EWR:'Newark',BOS:'Boston',IAD:'Washington Dulles',ORD:'Chicago',ATL:'Atlanta',MIA:'Miami',LAX:'Los Angeles',YYZ:'Toronto',SIN:'Singapore',HKG:'Hong Kong',PEK:'Beijing',PVG:'Shanghai',BOM:'Mumbai',DEL:'Delhi'};
+const H=36e5;
+const evOf=r=>{const e=r.events&&typeof r.events==='object'?JSON.parse(JSON.stringify(r.events)):{};EV.forEach(([c])=>e[c]=Object.assign({loc:'',flight:'',plan:'',act:'',plan0:''},e[c]));return e};
+const when=v=>v?new Date(v).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+const local=v=>{if(!v)return'';const d=new Date(v);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
+const hrs=ms=>{const h=Math.round(Math.abs(ms)/H*10)/10;return h>=24?Math.round(h/24*10)/10+' d':h+' h'};
+// The status, progress and warnings follow the latest event that has actually happened
+function derive(e){const now=Date.now(),last=[...EV].reverse().find(([c])=>e[c].act),code=last&&last[0];
+ const status=code==='DLV'?'Delivered':code==='ARR'||code==='RCF'?'Arrived':code==='DEP'?'In transit':'Booked';
+ let pct=0;if(code==='DLV')pct=100;else if(code==='RCF')pct=95;else if(code==='ARR')pct=90;
+ else if(code==='DEP'){const a=+new Date(e.DEP.act),b=+new Date(e.ARR.plan||e.DEP.act);pct=40+Math.round(45*Math.min(1,Math.max(0,(now-a)/Math.max(1,b-a))))}
+ else if(code==='MAN')pct=20;else if(code==='RCS')pct=10;
+ const flags=[];
+ if(e.DEP.plan0&&e.DEP.plan&&!e.DEP.act){const d=new Date(e.DEP.plan)-new Date(e.DEP.plan0);if(d>=H)flags.push(['w','Departure moved '+hrs(d)+' later'])}
+ if(e.DEP.act&&(e.DEP.plan0||e.DEP.plan)){const d=new Date(e.DEP.act)-new Date(e.DEP.plan0||e.DEP.plan);if(d>=H)flags.push(['','Departed '+hrs(d)+' late'])}
+ if(e.ARR.plan&&!e.ARR.act&&now>new Date(e.ARR.plan))flags.push(['','Past planned arrival by '+hrs(now-new Date(e.ARR.plan))]);
+ if(e.ARR.act&&!e.RCF.act&&e.RCF.plan&&now>new Date(e.RCF.plan))flags.push(['w','Landed, not yet received at warehouse']);
+ return{status,code,pct,flags}}
+function detail(r){const e=evOf(r),x=derive(e),cur=EV.findIndex(([c])=>c===x.code),o=(r.origin||e.RCS.loc||e.DEP.loc||'').toUpperCase(),ds=(r.destination||e.ARR.loc||'').toUpperCase();
+ return `<tr class="exp"><td colspan="9"><div class="det" data-for="${esc(r.id)}">
+ <div class="dflags">${x.flags.map(([w,t])=>`<span class="flag${w?' w':''}">${esc(t)}</span>`).join('')}</div>
+ <div class="route"><div class="ap"><b>${esc(o||'?')}</b><small>${esc(AIRPORTS[o]||'Origin')}</small></div>
+  <div class="pbar" role="img" aria-label="Journey ${x.pct}% complete"><em>${esc(e.DEP.flight||r.flight||'')}</em><i style="width:${x.pct}%"></i><span style="left:${Math.min(96,Math.max(4,x.pct))}%">${x.pct}%</span></div>
+  <div class="ap r"><b>${esc(ds||'?')}</b><small>${esc(AIRPORTS[ds]||'Destination')}</small></div></div>
+ <div class="tlwrap"><table class="tl"><thead><tr><th></th><th>Event</th><th>Location</th><th>Flight</th><th>Planned</th><th>Actual</th><th></th></tr></thead><tbody>
+ ${EV.map(([c,label],i)=>{const v=e[c],moved=v.plan0&&v.plan&&!v.act&&new Date(v.plan)-new Date(v.plan0)>=H;return `<tr class="${i===cur?'cur':''}">
+  <td><span class="dot${v.act?' done':''}" aria-label="${v.act?'Done':'Not yet'}"></span></td>
+  <td class="code">${c}<small>${label}</small></td>
+  <td><input class="loc" data-c="${c}" data-k="loc" value="${esc(v.loc)}" maxlength="3" aria-label="${c} location"></td>
+  <td><input class="fl" data-c="${c}" data-k="flight" value="${esc(v.flight)}" aria-label="${c} flight"></td>
+  <td><input type="datetime-local" data-c="${c}" data-k="plan" value="${local(v.plan)}" aria-label="${c} planned time">${moved?`<span class="was">was ${when(v.plan0)}</span>`:''}</td>
+  <td><input type="datetime-local" data-c="${c}" data-k="act" value="${local(v.act)}" aria-label="${c} actual time"></td>
+  <td>${v.act?`<button type="button" class="g sm" data-undo="${c}">Undo</button>`:`<button type="button" class="g sm" data-now="${c}">Done now</button>`}</td></tr>`}).join('')}
+ </tbody></table></div>
+ <div class="dfoot">Fill in events as the airline reports them (press Track to check the airline). Status, route, flight, ETD and ETA update from this timeline for everyone.</div></div></td></tr>`}
+const ymd=v=>{const d=new Date(v);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+// Save the timeline and keep the list columns in step with it
+async function saveEvents(r,e){const x=derive(e),p={events:e};
+ if(x.code&&!['Customs hold','Issue'].includes(r.status))p.status=x.status;
+ if(e.DEP.act||e.DEP.plan)p.etd=ymd(e.DEP.act||e.DEP.plan);
+ if(e.ARR.act||e.ARR.plan)p.eta=ymd(e.ARR.act||e.ARR.plan);
+ const fl=e.DEP.flight||e.ARR.flight||e.MAN.flight;if(fl)p.flight=fl.toUpperCase();
+ const o=e.DEP.loc||e.RCS.loc;if(o)p.origin=o.toUpperCase();const ds=e.ARR.loc||e.RCF.loc||e.DLV.loc;if(ds)p.destination=ds.toUpperCase();
+ Object.assign(r,p);render();
+ const {error}=await db.from('shipments').update(p).eq('id',r.id);if(error)toast('Couldn\'t save the timeline: '+error.message)}
+
 const hashInfo=(()=>{const h=new URLSearchParams(location.hash.slice(1));return{type:h.get('type'),err:h.get('error_description')}})();
-let db=null,rows=[],filter='Active',q='',started=false,needPw=hashInfo.type==='invite'||hashInfo.type==='recovery',editing=null,chan=null,reloadT=null;
+let open=null,db=null,rows=[],filter='Active',q='',started=false,needPw=hashInfo.type==='invite'||hashInfo.type==='recovery',editing=null,chan=null,reloadT=null;
 
 function show(which){['auth','setpw','app'].forEach(id=>$(id).hidden=id!==which)}
 function say(el,text,ok){el.textContent=text||'';el.className='msg '+(ok?'ok':'bad')}
@@ -276,17 +344,24 @@ function render(){
   .sort((a,b)=>(a.status==='Delivered')-(b.status==='Delivered')||(a.eta||'9999').localeCompare(b.eta||'9999')||String(b.updated_at).localeCompare(String(a.updated_at)));
  const t=today();
  $('rows').innerHTML=list.map(r=>{const d=digits(r.mawb),late=r.eta&&r.eta<t&&!['Arrived','Delivered'].includes(r.status);
-  const cargo=[r.pieces!=null?r.pieces+' pcs':'',r.weight_kg!=null?(+r.weight_kg).toLocaleString('en-GB')+' kg':''].filter(Boolean).join(' · ');
-  return `<tr data-s="${esc(r.status)}">
-<td class="c-awb">${awbHtml(r.mawb)}<small>${esc(r.airline||'Airline not set')}</small>${d.length===11&&!checkOk(d)?'<small class="warn">Check digit doesn\'t match. Check the number.</small>':''}</td>
+  return `<tr data-s="${esc(r.status)}" data-id="${esc(r.id)}" class="main${open===r.id?' is-open':''}" tabindex="0" aria-expanded="${open===r.id}" title="Show route and timeline">
+<td class="c-awb">${awbHtml(r.mawb)}<small>${esc(r.airline||AIRLINES[d.slice(0,3)]||'Airline not set')}</small>${d.length===11&&!checkOk(d)?'<small class="warn">Check digit doesn\'t match. Check the number.</small>':''}</td>
 <td class="c-cust"><strong>${esc(r.customer||'')}</strong>${r.reference?`<small>${esc(r.reference)}</small>`:''}${r.description?`<small>${esc(r.description)}</small>`:''}${!r.customer&&!r.reference&&!r.description?'<small>No customer yet</small>':''}</td>
 <td data-l="Route"><span class="route">${esc(r.origin||'?')} → ${esc(r.destination||'?')}</span></td>
 <td data-l="Flight">${esc(r.flight||'')}${r.etd?`<small>Departs ${day(r.etd)}</small>`:''}${!r.flight&&!r.etd?'<small>Not set</small>':''}</td>
 <td data-l="ETA">${r.eta?`<span class="${late?'late':''}">${day(r.eta)}</span>${late?'<small class="late">Past ETA</small>':''}`:'<small>Not set</small>'}</td>
-<td data-l="Cargo">${esc(r.temperature||'')}${cargo?`<small>${cargo}</small>`:''}${!r.temperature&&!cargo?'<small>Not set</small>':''}</td>
+<td data-l="Temperature">${r.temperature?esc(r.temperature):'<small>Not set</small>'}</td>
 <td data-l="Status"><span class="st" data-s="${esc(r.status)}">${esc(r.status)}</span></td>
 <td data-l="Last change"><small style="margin:0">${rel(r.updated_at)} by ${esc(person(r.updated_by_email||r.created_by_email))}</small></td>
-<td class="c-act"><div class="acts"><button type="button" class="g sm" data-track="${esc(r.mawb)}">Track</button><button type="button" class="g sm" data-edit="${esc(r.id)}">Edit</button></div></td></tr>`}).join('');
+<td class="c-act"><div class="acts"><button type="button" class="g sm" data-track="${esc(r.mawb)}">Track</button><button type="button" class="g sm" data-edit="${esc(r.id)}">Edit</button></div></td></tr>${open===r.id?detail(r):''}`}).join('');
+ const tog=tr=>{open=open===tr.dataset.id?null:tr.dataset.id;render()};
+ $('rows').querySelectorAll('tr.main').forEach(tr=>{tr.onclick=e=>{if(!e.target.closest('button'))tog(tr)};tr.onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&e.target===tr){e.preventDefault();tog(tr)}}});
+ const det=$('rows').querySelector('.det');
+ if(det){const r=rows.find(x=>x.id===det.dataset.for),e=evOf(r);
+  det.querySelectorAll('input[data-c]').forEach(inp=>inp.onchange=()=>{const v=e[inp.dataset.c],k=inp.dataset.k;
+   if(k==='plan'||k==='act'){const nv=inp.value?new Date(inp.value).toISOString():'';if(k==='plan'&&!v.plan0&&v.plan)v.plan0=v.plan;v[k]=nv}else v[k]=inp.value.trim().toUpperCase();saveEvents(r,e)});
+  det.querySelectorAll('[data-now]').forEach(b=>b.onclick=()=>{e[b.dataset.now].act=new Date().toISOString();saveEvents(r,e)});
+  det.querySelectorAll('[data-undo]').forEach(b=>b.onclick=()=>{e[b.dataset.undo].act='';saveEvents(r,e)})}
  $('rows').querySelectorAll('[data-track]').forEach(b=>b.onclick=()=>track(b.dataset.track));
  $('rows').querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openForm(rows.find(r=>r.id===b.dataset.edit)));
  const em=$('empty');em.hidden=list.length>0;
@@ -301,7 +376,7 @@ function track(m){const f=document.createElement('form');f.method='post';f.actio
  document.body.appendChild(f);f.submit();f.remove()}
 
 // add / edit
-const F=['mawb','airline','status','type','temp:temperature','customer','reference','description','origin','destination','flight','etd','eta','pieces','weight:weight_kg','notes'].map(s=>{const [id,col]=s.split(':');return{id:'f_'+id,col:col||id}});
+const F=['mawb','airline','status','type','temp:temperature','customer','reference','description','origin','destination','flight','etd','eta','notes'].map(s=>{const [id,col]=s.split(':');return{id:'f_'+id,col:col||id}});
 $('f_status').innerHTML=STATUSES.map(s=>`<option>${s}</option>`).join('');
 function mawbHint(){const d=digits($('f_mawb').value),h=$('mawbHint');
  if(!d){h.textContent='';h.className='hintline';return}
@@ -319,7 +394,7 @@ $('f').onsubmit=async e=>{e.preventDefault();const d=digits($('f_mawb').value);
  if(d.length!==11)return say($('fMsg'),'Enter the 11-digit MAWB number, for example 176-12345675.');
  const rec={};F.forEach(({id,col})=>{const v=$(id).value.trim();rec[col]=v===''?null:v});
  rec.mawb=fmtMawb(d);rec.airline=rec.airline||AIRLINES[d.slice(0,3)]||null;rec.status=rec.status||'Booked';rec.type=rec.type||'Air cargo';
- ['origin','destination','flight'].forEach(k=>rec[k]=rec[k]&&rec[k].toUpperCase());rec.pieces=rec.pieces==null?null:parseInt(rec.pieces,10);rec.weight_kg=rec.weight_kg==null?null:+rec.weight_kg;
+ ['origin','destination','flight'].forEach(k=>rec[k]=rec[k]&&rec[k].toUpperCase());
  $('saveBtn').disabled=true;const res=editing?await db.from('shipments').update(rec).eq('id',editing.id):await db.from('shipments').insert(rec);$('saveBtn').disabled=false;
  if(res.error)return say($('fMsg'),res.error.code==='23505'?rec.mawb+' is already on the list. Search for it and press Edit instead.':'Couldn\'t save: '+res.error.message);
  $('dlg').close();toast(editing?'Changes saved':rec.mawb+' added');load()};
@@ -328,7 +403,7 @@ $('del').onclick=async()=>{const b=$('del');if(!b.dataset.armed){b.dataset.armed
  if(error)return say($('fMsg'),'Couldn\'t delete: '+error.message);$('dlg').close();toast(editing.mawb+' deleted');load()};
 
 // CSV export of what is shown in the list
-$('csv').onclick=()=>{const cols=['mawb','airline','type','status','customer','reference','description','origin','destination','flight','etd','eta','temperature','pieces','weight_kg','notes','created_by_email','created_at','updated_by_email','updated_at'];
+$('csv').onclick=()=>{const cols=['mawb','airline','type','status','customer','reference','description','origin','destination','flight','etd','eta','temperature','notes','created_by_email','created_at','updated_by_email','updated_at'];
  const cell=v=>{v=v==null?'':String(v);return/[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
  const csv=[cols.join(','),...rows.map(r=>cols.map(c=>cell(r[c])).join(','))].join('\r\n');
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv'}));a.download='arca-mawbs-'+today()+'.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)};
